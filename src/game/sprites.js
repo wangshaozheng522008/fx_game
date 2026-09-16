@@ -1,17 +1,17 @@
 export const PALETTE = {
   '.': null,
-  k: '#140c22',
-  w: '#3a2410',
+  k: '#2a1030',
+  w: '#5a3018',
   s: '#f0c090',
   r: '#3d8cff',
   b: '#7ce7ff',
   g: '#ffe566',
-  e: '#ff3b5c',
-  d: '#9b1d32',
-  h: '#ff8fa0',
+  e: '#fff56b',
+  d: '#ff2d55',
+  h: '#ff7a90',
   n: '#f4e8c8',
-  m: '#1a1028',
   y: '#fff1a8',
+  o: '#ffb347',
 };
 
 export const PLAYER = [
@@ -37,8 +37,8 @@ export const MONSTER = [
   '......kkkk.....',
   '....kkddddkk...',
   '...kddhhhhddk..',
-  '..kddhhhhhhddk.',
-  '..kdhhyhhyhhdk.',
+  '..kddhooohhddk.',
+  '..kdhyhyhyhddk.',
   '..kdhhkkkkhhdk.',
   '..kddhhhhhhddk.',
   '..kddhheehhddk.',
@@ -48,6 +48,8 @@ export const MONSTER = [
   '.....k....k....',
   '...............',
 ];
+
+export const SPRITE_SCALE = 1;
 
 export function drawSprite(ctx, map, px, py, scale) {
   for (let row = 0; row < map.length; row += 1) {

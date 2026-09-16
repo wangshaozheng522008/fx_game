@@ -7,21 +7,44 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <meta name="theme-color" content="#140c22" />
-    <meta name="description" content="在像素坐标系上选择正确函数，15秒内发射射线击中怪物" />
+    <meta name="description" content="四档数学家难度：选对函数，沿图像发射射线击中全部怪物" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="icon" type="image/svg+xml" href="./icons/icon-192.svg" />
-    <link rel="apple-touch-icon" href="./icons/icon-192.svg" />
+    <link rel="icon" type="image/png" href="./icons/icon.png" />
+    <link rel="apple-touch-icon" href="./icons/icon.png" />
     <title>函数射线</title>
   </head>
   <body>
     <div id="app">
       <section id="screen-title" class="screen screen-title">
         <p class="eyebrow">PIXEL MATH ARENA</p>
+        <img class="game-icon" src="./icons/icon.png" width="96" height="96" alt="函数射线" />
         <h1 class="logo-title">函数射线</h1>
         <p class="logo-en">FX GAME</p>
-        <p class="slogan">原点射出函数射线，15 秒内选对公式击中怪物</p>
-        <p class="best-line">最高分 <span id="title-best">0</span></p>
+        <p class="slogan">选对等值线，沿曲线射出攻击并击中全部怪物</p>
+        <div class="diff-grid" id="diff-picker">
+          <button type="button" class="diff-card is-on" data-id="euclid">
+            <span class="diff-tier">入门</span>
+            <span class="diff-title">欧几里得级</span>
+            <span class="diff-desc">公理入门 · 20秒 · 1怪</span>
+          </button>
+          <button type="button" class="diff-card" data-id="archimedes">
+            <span class="diff-tier">进阶</span>
+            <span class="diff-title">阿基米德级</span>
+            <span class="diff-desc">巧思进阶 · 25秒 · 1怪</span>
+          </button>
+          <button type="button" class="diff-card" data-id="gauss">
+            <span class="diff-tier">困难</span>
+            <span class="diff-title">高斯级</span>
+            <span class="diff-desc">严谨挑战 · 30秒 · 2怪</span>
+          </button>
+          <button type="button" class="diff-card" data-id="riemann">
+            <span class="diff-tier">极限</span>
+            <span class="diff-title">黎曼级</span>
+            <span class="diff-desc">抽象极限 · 30秒 · 3怪</span>
+          </button>
+        </div>
+        <p class="best-line">本档最高 <span id="title-best">0</span></p>
         <button type="button" class="pixel-btn pixel-btn-main" id="btn-start">开始挑战</button>
         <button type="button" class="pixel-btn" id="btn-help">玩法说明</button>
       </section>
@@ -29,36 +52,43 @@
       <section id="screen-help" class="screen screen-help" hidden>
         <h2>玩法说明</h2>
         <ul class="help-list">
-          <li>角色永远站在坐标原点 (0, 0)。</li>
-          <li>怪物出现在平面上的随机一点，坐标会显示出来。</li>
-          <li>下方给出 3 个函数，选出图像经过原点且穿过怪物的那一个。</li>
-          <li>攻击射线沿函数图像发射，允许 5% 数值偏差。</li>
-          <li>每回合限时 15 秒，共 3 条命。</li>
+          <li>角色随机出现在平面上，不再固定在原点。</li>
+          <li>选项是 F(x, y) 的等值线：过角色的那条曲线还要击中全部怪物。</li>
+          <li>入门 20 秒 1 怪；进阶 25 秒 1 怪；困难 30 秒 2 怪；极限 30 秒 3 怪。</li>
+          <li>射线沿等值线发射，允许 5% 数值偏差，缺一不可。</li>
+          <li>共 3 条命。困难和极限必须一条等值线同时打中全部目标。</li>
         </ul>
-        <p class="help-example">例：怪物在 (4.00, 2.00)，应选 y = 0.50x</p>
+        <p class="help-example">例：入门可选 x² + y²（圆）或 ax + by（直线）</p>
         <button type="button" class="pixel-btn pixel-btn-main" id="btn-help-back">返回</button>
       </section>
 
       <section id="screen-play" class="screen screen-play" hidden>
         <header class="hud">
           <div class="hud-row">
-            <span id="lives" class="lives" aria-label="剩余生命">♥♥♥</span>
+            <span id="tier-label" class="tier-label">欧几里得级</span>
             <span id="wave" class="wave">W1</span>
             <span id="score" class="score">0</span>
           </div>
           <div class="timer-wrap" aria-label="剩余时间">
             <div id="timer-bar" class="timer-bar"></div>
-            <span id="timer-text">15.0</span>
+            <span id="timer-text">20.0</span>
           </div>
           <p id="target" class="target">目标 (0.00, 0.00)</p>
         </header>
         <div id="stage" class="stage">
-          <canvas id="game" width="180" height="180">坐标系画布</canvas>
+          <canvas id="game" width="256" height="256">坐标系画布</canvas>
         </div>
-        <div class="choices" id="choices">
-          <button type="button" class="pixel-btn choice" data-index="0"></button>
-          <button type="button" class="pixel-btn choice" data-index="1"></button>
-          <button type="button" class="pixel-btn choice" data-index="2"></button>
+        <div class="choice-panel">
+          <div id="lives" class="lives" aria-label="剩余生命">
+            <span class="heart">♥</span>
+            <span class="heart">♥</span>
+            <span class="heart">♥</span>
+          </div>
+          <div class="choices" id="choices">
+            <button type="button" class="pixel-btn choice" data-index="0"></button>
+            <button type="button" class="pixel-btn choice" data-index="1"></button>
+            <button type="button" class="pixel-btn choice" data-index="2"></button>
+          </div>
         </div>
       </section>
 

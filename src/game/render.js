@@ -1,5 +1,5 @@
 import { VIEW, WORLD_RANGE } from './constants.js';
-import { MONSTER, PLAYER, drawSprite, spriteSize } from './sprites.js';
+import { MONSTER, PLAYER, SPRITE_SCALE, drawSprite, spriteSize } from './sprites.js';
 
 function worldToPix(x, y) {
   const px = ((x / WORLD_RANGE + 1) / 2) * VIEW;
@@ -41,27 +41,45 @@ export function createRenderer(canvas) {
     ctx.fillRect(pix(origin.px), 0, 2, VIEW);
 
     ctx.fillStyle = '#8c7a5a';
-    ctx.font = '8px monospace';
+    ctx.font = '10px monospace';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText('x', VIEW - 10, pix(origin.py) + 4);
+    ctx.fillText('x', VIEW - 12, pix(origin.py) + 4);
     ctx.fillText('y', pix(origin.px) + 4, 4);
   }
 
-  function drawActor(map, x, y, bob) {
-    const size = spriteSize(map, 1);
+  function drawReticle(x, y) {
     const pos = worldToPix(x, y);
-    drawSprite(ctx, map, pix(pos.px - size.w / 2), pix(pos.py - size.h / 2 + bob), 1);
+    const cx = pix(pos.px);
+    const cy = pix(pos.py);
+    ctx.fillStyle = '#ffe566';
+    ctx.fillRect(cx - 5, cy, 3, 1);
+    ctx.fillRect(cx + 3, cy, 3, 1);
+    ctx.fillRect(cx, cy - 5, 1, 3);
+    ctx.fillRect(cx, cy + 3, 1, 3);
+    ctx.fillStyle = '#ff2d55';
+    ctx.fillRect(cx, cy, 2, 2);
+  }
+
+  function drawActor(map, x, y, bob) {
+    const size = spriteSize(map, SPRITE_SCALE);
+    const pos = worldToPix(x, y);
+    drawSprite(
+      ctx,
+      map,
+      pix(pos.px - size.w / 2),
+      pix(pos.py - size.h / 2 + bob),
+      SPRITE_SCALE,
+    );
   }
 
   function drawBeam(samples, t, hit) {
     if (!samples.length) return;
     const count = Math.max(1, Math.floor(samples.length * t));
+    ctx.fillStyle = hit === false ? '#ff8fa0' : '#ffe566';
     for (let i = 0; i < count; i += 1) {
       const p = worldToPix(samples[i].x, samples[i].y);
-      const pulse = i % 4 === 0;
-      ctx.fillStyle = pulse ? '#ffffff' : hit === false ? '#ff8fa0' : '#ffe566';
-      ctx.fillRect(pix(p.px) - 1, pix(p.py) - 1, pulse ? 3 : 2, pulse ? 3 : 2);
+      ctx.fillRect(pix(p.px) - 1, pix(p.py) - 1, 2, 2);
     }
   }
 
@@ -75,27 +93,46 @@ export function createRenderer(canvas) {
   }
 
   function drawBanner(text, color) {
+    const w = Math.round(VIEW * 0.72);
+    const h = Math.round(VIEW * 0.16);
+    const x = Math.round((VIEW - w) / 2);
+    const y = Math.round(VIEW * 0.4);
     ctx.fillStyle = 'rgba(10, 6, 18, 0.72)';
-    ctx.fillRect(28, 72, 124, 28);
+    ctx.fillRect(x, y, w, h);
     ctx.fillStyle = color;
-    ctx.font = '12px monospace';
+    ctx.font = '16px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, VIEW / 2, 86);
+    ctx.fillText(text, VIEW / 2, y + h / 2);
+  }
+
+  function roundPlayer(state) {
+    return state.round && state.round.player ? state.round.player : { x: 0, y: 0 };
+  }
+
+  function roundPoints(state) {
+    if (!state.round) return [];
+    if (Array.isArray(state.round.points) && state.round.points.length) {
+      return state.round.points;
+    }
+    return state.round.point ? [state.round.point] : [];
   }
 
   function render(state) {
+    const player = roundPlayer(state);
+    const points = roundPoints(state);
     clear();
     drawGrid();
     if (state.beamSamples) {
       drawBeam(state.beamSamples, state.beamT, state.hit);
     }
-    drawActor(PLAYER, 0, 0, 0);
-    if (state.point) {
-      const bob = Math.round(Math.sin(state.now / 180) * 1);
-      drawActor(MONSTER, state.point.x, state.point.y, state.hit === true ? 0 : bob);
-    }
-    drawParticles(state.particles);
+    drawActor(PLAYER, player.x, player.y, 0);
+    const bob = Math.round(Math.sin((state.now || 0) / 180));
+    points.forEach((point) => {
+      if (state.hit !== true) drawReticle(point.x, point.y);
+      drawActor(MONSTER, point.x, point.y, state.hit === true ? 0 : bob);
+    });
+    drawParticles(state.particles || []);
     if (state.banner) {
       drawBanner(state.banner.text, state.banner.color);
     }

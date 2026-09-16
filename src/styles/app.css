@@ -42,7 +42,7 @@ body {
 }
 
 #app {
-  max-width: 480px;
+  max-width: 560px;
   margin: 0 auto;
   height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 22px);
 }
@@ -63,6 +63,9 @@ body {
 .screen-over {
   justify-content: center;
   text-align: center;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 .eyebrow,
@@ -71,6 +74,16 @@ body {
   letter-spacing: 0.28em;
   font-size: 0.7rem;
   color: var(--accent);
+}
+
+.game-icon {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto;
+  object-fit: cover;
+  background: #140c22;
+  box-shadow: 4px 4px 0 var(--shadow);
 }
 
 .logo-title,
@@ -160,9 +173,30 @@ body {
   font-size: 0.95rem;
 }
 
+.choice-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .lives {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  min-height: 28px;
   color: var(--danger);
-  letter-spacing: 0.08em;
+}
+
+.heart {
+  font-size: 1.45rem;
+  line-height: 1;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.heart.is-empty {
+  color: #4a2a40;
+  text-shadow: none;
 }
 
 .timer-wrap {
@@ -195,11 +229,138 @@ body {
   color: #140c22;
 }
 
+.diff-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.diff-card {
+  appearance: none;
+  border: 0;
+  padding: 10px 8px;
+  text-align: left;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  background: var(--panel);
+  box-shadow: 3px 3px 0 var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 72px;
+}
+
+.diff-card .diff-tier {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+
+.diff-card .diff-title {
+  font-size: 0.92rem;
+}
+
+.diff-card .diff-desc {
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.diff-card.is-on {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.diff-card[data-id='euclid'] .diff-tier { color: #3dbf6a; }
+.diff-card[data-id='archimedes'] .diff-tier { color: #3d8cff; }
+.diff-card[data-id='gauss'] .diff-tier { color: #8b5cf6; }
+.diff-card[data-id='riemann'] .diff-tier { color: #ff4d4d; }
+
+.diff-card[data-id='euclid'].is-on { outline-color: #3dbf6a; }
+.diff-card[data-id='archimedes'].is-on { outline-color: #3d8cff; }
+.diff-card[data-id='gauss'].is-on { outline-color: #8b5cf6; }
+.diff-card[data-id='riemann'].is-on { outline-color: #ffe566; }
+
+.tier-label {
+  color: var(--accent);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+
+#app[data-diff='euclid'] {
+  --accent: #3dbf6a;
+}
+
+#app[data-diff='archimedes'] {
+  --accent: #3d8cff;
+}
+
+#app[data-diff='gauss'] {
+  --accent: #8b5cf6;
+}
+
+#app[data-diff='riemann'] {
+  --accent: #ff4d4d;
+}
+
+#app[data-diff='euclid'] .pixel-btn-main {
+  background: #2f6b3a;
+  box-shadow:
+    0 3px 0 var(--shadow),
+    0 -3px 0 #4c9a58 inset,
+    0 3px 0 #1d4525 inset;
+}
+
+#app[data-diff='archimedes'] .pixel-btn-main {
+  background: #2456a8;
+  box-shadow:
+    0 3px 0 var(--shadow),
+    0 -3px 0 #4d86d4 inset,
+    0 3px 0 #163868 inset;
+}
+
+#app[data-diff='gauss'] .pixel-btn-main {
+  background: #5b3aad;
+  box-shadow:
+    0 3px 0 var(--shadow),
+    0 -3px 0 #8b5cf6 inset,
+    0 3px 0 #3a2470 inset;
+}
+
+#app[data-diff='riemann'] .pixel-btn-main {
+  background: #9b2030;
+  box-shadow:
+    0 3px 0 var(--shadow),
+    0 -3px 0 #ffe566 inset,
+    0 3px 0 #5a1018 inset;
+}
+
 .target {
   margin: 0;
   text-align: center;
   color: #ffe566;
-  font-size: 0.9rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.screen-play {
+  gap: 6px;
+}
+
+.screen-play .hud {
+  flex: 0 0 auto;
+  gap: 4px;
+}
+
+.screen-play .choice-panel {
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.screen-play .pixel-btn {
+  min-height: 40px;
+  padding: 8px 10px;
 }
 
 .stage {
@@ -230,16 +391,32 @@ body {
 #game {
   width: 100%;
   height: auto;
+  max-width: 100%;
   max-height: 100%;
   aspect-ratio: 1 / 1;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
 
+@supports (width: 1cqh) {
+  .stage {
+    container-type: size;
+  }
+
+  #game {
+    width: min(100cqw, 100cqh);
+    height: min(100cqw, 100cqh);
+  }
+}
+
 .choices {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+}
+
+.choice {
+  font-size: 0.82rem;
 }
 
 .choice.is-correct {

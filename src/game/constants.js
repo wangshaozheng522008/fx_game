@@ -1,5 +1,5 @@
 export const WORLD_RANGE = 8.5;
-export const VIEW = 180;
+export const VIEW = 256;
 export const ROUND_SECONDS = 15;
 export const MAX_LIVES = 3;
 export const HIT_TOLERANCE = 0.05;
