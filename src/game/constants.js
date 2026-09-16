@@ -1,0 +1,10 @@
+export const WORLD_RANGE = 8.5;
+export const VIEW = 180;
+export const ROUND_SECONDS = 15;
+export const MAX_LIVES = 3;
+export const HIT_TOLERANCE = 0.05;
+export const MIN_ABS_X = 1.7;
+export const MIN_ABS_Y = 1.2;
+export const STORAGE_BEST = 'fx-game-best';
+export const BEAM_MS = 720;
+export const SETTLE_MS = 1100;

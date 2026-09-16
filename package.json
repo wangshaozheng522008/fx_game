@@ -1,0 +1,22 @@
+{
+  "name": "fx-game",
+  "version": "0.1.0",
+  "private": true,
+  "description": "在像素坐标系上选择正确函数，15秒内发射射线击中怪物",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && minitool-pack",
+    "preview": "vite preview --port 5174",
+    "validate": "minitool-validate xhs-tool --strict"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5",
+    "xhs-minitool-pack": "^0.1.2",
+    "xhs-minitool-validate": "^0.1.2",
+    "xhs-minitool-vite-config": "^0.1.2"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}

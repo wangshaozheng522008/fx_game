@@ -1,0 +1,8 @@
+node_modules/
+dist/
+xhs-tool/
+*.zip
+.DS_Store
+*.log
+.vscode/
+.idea/
