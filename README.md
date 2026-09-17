@@ -2,6 +2,19 @@
 
 小红书小工具格式的像素风 H5 小游戏：角色和怪物都在平面上，从 3 个公式里选出 **过角色的那条等值线**，沿曲线发射攻击，击中全部怪物。容差 5%。
 
+## 宣传海报
+
+3:4 像素海报（1080×1440），适合小红书封面。角色与怪物使用游戏内原版精灵。
+
+![函数射线像素海报](promo/poster.png)
+
+插画风海报见 `promo/poster-keyart.png`。重新生成：
+
+```bash
+pip install pillow fonttools brotli
+python3 promo/render_poster.py
+```
+
 ## 难度
 
 | 档 | 称号 | 时限 | 怪物 | 函数 |
