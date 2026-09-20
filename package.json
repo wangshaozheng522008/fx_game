@@ -8,10 +8,12 @@
     "dev": "vite",
     "build": "vite build && minitool-pack",
     "preview": "vite preview --port 5174",
-    "validate": "minitool-validate xhs-tool --strict"
+    "validate": "minitool-validate xhs-tool --strict",
+    "test": "vitest run"
   },
   "devDependencies": {
     "vite": "^6.3.5",
+    "vitest": "^5.0.1",
     "xhs-minitool-pack": "^0.1.2",
     "xhs-minitool-validate": "^0.1.2",
     "xhs-minitool-vite-config": "^0.1.2"

@@ -67,10 +67,22 @@ function joinTerms(left, right) {
   return `${left} + ${right}`;
 }
 
+export function resolveLevel(fn, player) {
+  if (fn.type.getLevel) {
+    return fn.type.getLevel(fn.params, player);
+  }
+  return fn.type.F(fn.params, player.x, player.y);
+}
+
+function levelOf(fn, player) {
+  if (fn.level === undefined) fn.level = resolveLevel(fn, player);
+  return fn.level;
+}
+
 function equationFor(fn, player) {
-  if (fn.type.closed) return fn.type.label(fn.params);
-  const c = fieldValue(fn, player);
-  return `${fn.type.label(fn.params)} = ${fmtN(c)}`;
+  const level = levelOf(fn, player);
+  if (fn.type.format) return fn.type.format(fn.params, level);
+  return `${fn.type.label(fn.params)} = ${fmtN(level)}`;
 }
 
 function quantize(n) {
@@ -84,9 +96,9 @@ function makePoint(x, y) {
   return { x: round2(x), y: round2(y) };
 }
 
-function fieldValue(fn, p) {
-  if (!fn.type.inDomain(p.x, p.y)) return NaN;
-  return fn.type.F(fn.params, p.x, p.y);
+function fieldAt(fn, x, y) {
+  if (!fn.type.inDomain(x, y)) return NaN;
+  return fn.type.F(fn.params, x, y);
 }
 
 function levelTol(C) {
@@ -94,8 +106,8 @@ function levelTol(C) {
 }
 
 export function hitsTarget(fn, player, point) {
-  const c = fieldValue(fn, player);
-  const v = fieldValue(fn, point);
+  const c = levelOf(fn, player);
+  const v = fieldAt(fn, point.x, point.y);
   if (!Number.isFinite(c) || !Number.isFinite(v)) return false;
   if (fn.id === 'atan2') return angDiff(v, c) <= 0.08;
   return Math.abs(v - c) <= levelTol(c);
@@ -289,8 +301,14 @@ const TYPES = {
     F(p, x, y) {
       return (x * x) / (p.a * p.a) + (y * y) / (p.b * p.b);
     },
+    getLevel() {
+      return 1;
+    },
     label(p) {
-      return `x²/${fmtN(p.a * p.a)} + y²/${fmtN(p.b * p.b)} = 1`;
+      return `x²/${fmtN(p.a * p.a)} + y²/${fmtN(p.b * p.b)}`;
+    },
+    format(p, level) {
+      return `${this.label(p)} = ${fmtN(level)}`;
     },
     randomParams() {
       return { a: quantize(rand(3.4, 6.8)), b: quantize(rand(2.6, 5.8)) };
@@ -308,8 +326,14 @@ const TYPES = {
     F(_p, x, y) {
       return x * x + y * y;
     },
-    label(p) {
-      return `x² + y² = ${fmtN(p.r2)}`;
+    getLevel(params) {
+      return params.r2;
+    },
+    label() {
+      return 'x² + y²';
+    },
+    format(p, level) {
+      return `x² + y² = ${fmtN(level)}`;
     },
     randomParams() {
       const r = quantize(rand(3.6, 6.4));
@@ -431,7 +455,13 @@ const TYPES = {
       const c = x / r;
       return r - p.a * (1 - c);
     },
+    getLevel() {
+      return 0;
+    },
     label(p) {
+      return `r − ${fmtN(p.a)}(1 − cos θ)`;
+    },
+    format(p) {
       return `r = ${fmtN(p.a)}(1 − cos θ)`;
     },
     randomParams() {
@@ -598,6 +628,7 @@ function fallbackRound(count) {
     makeFn('axisY', {}, false),
   ];
   options.forEach((fn) => {
+    fn.level = resolveLevel(fn, player);
     fn.label = equationFor(fn, player);
   });
   return { player, points, point: points[0], options, answerIndex: 0 };
@@ -633,6 +664,7 @@ export function createRound(wave, difficultyInput) {
     }
     if (options.length < 3) continue;
     options.forEach((fn) => {
+      fn.level = resolveLevel(fn, player);
       fn.label = equationFor(fn, player);
     });
     const shuffled = shuffle(options);
@@ -649,7 +681,7 @@ export function createRound(wave, difficultyInput) {
 
 function fieldDelta(fn, x, y, c) {
   if (!fn.type.inDomain(x, y)) return NaN;
-  const v = fn.type.F(fn.params, x, y);
+  const v = fieldAt(fn, x, y);
   if (!Number.isFinite(v)) return NaN;
   if (fn.id === 'atan2') {
     let d = v - c;
@@ -669,7 +701,7 @@ function lerpZero(x0, y0, d0, x1, y1, d1) {
 }
 
 export function sampleIsoline(fn, player) {
-  const c = fieldValue(fn, player);
+  const c = levelOf(fn, player);
   if (!Number.isFinite(c)) return [];
   const n = 72;
   const delta = (2 * WORLD_RANGE) / n;
