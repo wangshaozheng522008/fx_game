@@ -4,14 +4,12 @@ import { distanceToPolyline, polylineLength } from './contour/geometry.js';
 import { marchingSquares } from './contour/marchingSquares.js';
 import { stitchSegments } from './contour/stitchSegments.js';
 import { sampleActors } from './generator/actorSampler.js';
-import { getEvaluationKey } from './functions/helpers.js';
+import { formatLocalCoordinates, IDENTITY_TRANSFORM, evaluateFunction, isInDomain } from './functions/transform.js';
 import { getFunction, getFunctions } from './functions/registry.js';
 import { getWaveProfile } from './generator/waveProfile.js';
 
 const MIN_R = 2.3;
 const MAX_R = WORLD_RANGE - 0.9;
-const evaluationKey = getEvaluationKey();
-
 const generationStats = {
   rounds: 0,
   attempts: 0,
@@ -90,7 +88,7 @@ function makePoint(x, y) {
 
 export function resolveLevel(fn, player) {
   if (fn.type.getLevel) return fn.type.getLevel(fn.params, player);
-  return evaluateFunction(fn, player.x, player.y);
+  return evaluateFunction(fn.type, fn, player.x, player.y);
 }
 
 function levelOf(fn, player) {
@@ -98,45 +96,24 @@ function levelOf(fn, player) {
   return fn.level;
 }
 
+function localizeEquation(equation) {
+  return equation
+    .replaceAll('x', 'u')
+    .replaceAll('y', 'v')
+    .replaceAll('ˣ', 'ᵘ')
+    .replaceAll('ʸ', 'ᵛ');
+}
+
 function equationFor(fn, player) {
   const equation = fn.type.format(fn.params, levelOf(fn, player));
-  if (!fn.transform) return equation;
-  const { translate, rotate, scale } = fn.transform;
-  const parts = [];
-  if (translate.x || translate.y) {
-    parts.push(`T(${translate.x >= 0 ? '+' : ''}${translate.x.toFixed(2)},${translate.y >= 0 ? '+' : ''}${translate.y.toFixed(2)})`);
-  }
-  if (rotate) parts.push(`R(${rotate >= 0 ? '+' : ''}${rotate.toFixed(2)})`);
-  if (scale !== 1) parts.push(`S(${scale.toFixed(2)})`);
-  return parts.length ? `${equation} · ${parts.join(' ')}` : equation;
+  const coordinates = formatLocalCoordinates(fn.transform);
+  const displayedEquation = coordinates ? localizeEquation(equation) : equation;
+  return coordinates ? `${displayedEquation} · ${coordinates}` : displayedEquation;
 }
 
 function fieldAt(fn, x, y) {
-  if (!isInDomain(fn, x, y)) return NaN;
-  return evaluateFunction(fn, x, y);
-}
-
-function localPoint(fn, x, y) {
-  const transform = fn.transform;
-  if (!transform) return { x, y };
-  const dx = x - transform.translate.x;
-  const dy = y - transform.translate.y;
-  const cos = Math.cos(transform.rotate);
-  const sin = Math.sin(transform.rotate);
-  return {
-    x: (cos * dx + sin * dy) / transform.scale,
-    y: (-sin * dx + cos * dy) / transform.scale,
-  };
-}
-
-function evaluateFunction(fn, x, y) {
-  const point = localPoint(fn, x, y);
-  return fn.type[evaluationKey](fn.params, point.x, point.y);
-}
-
-function isInDomain(fn, x, y) {
-  const point = localPoint(fn, x, y);
-  return fn.type.domain(point.x, point.y);
+  if (!isInDomain(fn.type, fn, x, y)) return NaN;
+  return evaluateFunction(fn.type, fn, x, y);
 }
 
 function levelTolerance(level) {
@@ -172,26 +149,36 @@ function makeFn(id, params, correct, transform = null) {
     params,
     label: type.format(params, undefined),
     correct: Boolean(correct),
-    transform,
+    transform: transform || IDENTITY_TRANSFORM,
   };
-  fn.evaluate = (x, y) => evaluateFunction(fn, x, y);
-  fn.isInDomain = (x, y) => isInDomain(fn, x, y);
+  fn.evaluate = (x, y) => evaluateFunction(type, fn, x, y);
+  fn.isInDomain = (x, y) => isInDomain(type, fn, x, y);
   return fn;
 }
+
+const ROTATIONS = [0, Math.PI / 6, Math.PI / 4, Math.PI / 3, Math.PI / 2];
 
 function createTransform(type, profile) {
   if (Math.random() >= profile.transformChance) return null;
   if (!type.transforms.translate && !type.transforms.rotate && !type.transforms.scale) return null;
   const transform = {
-    translate: { x: 0, y: 0 },
-    rotate: 0,
-    scale: 1,
+    tx: 0,
+    ty: 0,
+    rotation: 0,
+    sx: 1,
+    sy: 1,
   };
   if (type.transforms.translate) {
-    transform.translate = { x: round2(rand(-0.55, 0.55)), y: round2(rand(-0.55, 0.55)) };
+    transform.tx = round2(rand(-2, 2));
+    transform.ty = round2(rand(-2, 2));
   }
-  if (type.transforms.rotate) transform.rotate = rand(-Math.PI / 6, Math.PI / 6);
-  if (type.transforms.scale) transform.scale = rand(0.88, 1.14);
+  if (type.transforms.rotate) transform.rotation = pick(ROTATIONS);
+  if (type.transforms.scale) {
+    transform.sx = rand(0.7, 1.4);
+    transform.sy = rand(0.7, 1.4);
+    if (transform.sx / transform.sy >= 1.8) transform.sy = Math.min(1.4, transform.sx / 1.75);
+    if (transform.sy / transform.sx >= 1.8) transform.sx = Math.min(1.4, transform.sy / 1.75);
+  }
   return transform;
 }
 
@@ -307,7 +294,7 @@ export function createRound(wave, difficultyInput) {
 }
 
 function fieldDelta(fn, x, y, level) {
-  if (!isInDomain(fn, x, y)) return NaN;
+  if (!isInDomain(fn.type, fn, x, y)) return NaN;
   const value = fieldAt(fn, x, y);
   if (!Number.isFinite(value)) return NaN;
   if (fn.id === 'atan2') {

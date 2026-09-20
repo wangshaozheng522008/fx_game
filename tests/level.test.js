@@ -4,20 +4,26 @@ import { getDifficulty } from '../src/game/difficulties.js';
 
 const gauss = getDifficulty('gauss');
 
-// Same tiered precision as fmtN in mathFns.js
-function fmtN(n) {
-  const abs = Math.abs(n);
-  if (abs >= 100) return n.toFixed(0);
-  if (abs >= 10) return n.toFixed(1);
-  return n.toFixed(2);
-}
-
 function correctOption(round, id) {
   return round.options.find((fn) => fn.id === id && fn.correct);
 }
 
 function wrongOption(round, id) {
   return round.options.find((fn) => fn.id === id && !fn.correct);
+}
+
+function displayedEquation(fn, level) {
+  const equation = fn.type.format(fn.params, level);
+  const transform = fn.transform;
+  const identity = !transform
+    || (transform.tx === 0 && transform.ty === 0 && transform.rotation === 0
+      && transform.sx === 1 && transform.sy === 1);
+  if (identity) return equation;
+  return equation
+    .replaceAll('x', 'u')
+    .replaceAll('y', 'v')
+    .replaceAll('ˣ', 'ᵘ')
+    .replaceAll('ʸ', 'ᵛ');
 }
 
 describe('unified function level evaluation', () => {
@@ -35,9 +41,7 @@ describe('unified function level evaluation', () => {
     expect(fn.level).toBe(1);
 
     // Display: equation must use level === 1
-    expect(fn.label).toContain(
-      `x²/${fmtN(fn.params.a * fn.params.a)} + y²/${fmtN(fn.params.b * fn.params.b)} = ${fmtN(1)}`,
-    );
+    expect(fn.label).toContain(displayedEquation(fn, 1));
 
     // Hit test: beam samples must cover player and all monsters
     expect(hitsAllTargets(fn, player, points)).toBe(true);
@@ -66,9 +70,7 @@ describe('unified function level evaluation', () => {
     expect(fn.level).toBe(1);
 
     // Display: equation reads "= 1"
-    expect(fn.label).toContain(
-      `x²/${fmtN(fn.params.a * fn.params.a)} + y²/${fmtN(fn.params.b * fn.params.b)} = ${fmtN(1)}`,
-    );
+    expect(fn.label).toContain(displayedEquation(fn, 1));
 
     // Beam: every sample lies on this option's own level-1 ellipse
     const beam = sampleIsoline(fn, player).primary;
@@ -93,7 +95,7 @@ describe('unified function level evaluation', () => {
     const { player, points } = round;
 
     expect(fn.level).toBe(fn.params.r2);
-    expect(fn.label).toContain(`x² + y² = ${fmtN(fn.params.r2)}`);
+    expect(fn.label).toContain(displayedEquation(fn, fn.params.r2));
 
 
     expect(hitsAllTargets(fn, player, points)).toBe(true);
@@ -123,7 +125,7 @@ describe('unified function level evaluation', () => {
     // Level is the fixed circle, not the player's radius
     expect(resolveLevel(fn, player)).toBe(fn.params.r2);
     expect(fn.level).toBe(fn.params.r2);
-    expect(fn.label).toContain(`x² + y² = ${fmtN(fn.params.r2)}`);
+    expect(fn.label).toContain(displayedEquation(fn, fn.params.r2));
 
 
     const beam = sampleIsoline(fn, player).primary;
