@@ -1,17 +1,24 @@
 import { equation, fmtN, generation, getEvaluationKey, parameterTier, pick, smoothTransforms, tierRange } from '../helpers.js';
 
+const polarTransforms = Object.freeze({
+  translate: false,
+  rotate: false,
+  scale: false,
+});
+
 const common = {
   family: 'polar',
   complexity: 4,
   tags: ['open', 'piecewise-smooth', 'multi-component'],
   generation: generation(2.5, 16),
-  transforms: smoothTransforms,
+  transforms: polarTransforms,
 };
 
 export const atan2 = {
   ...common,
   id: 'atan2',
   tags: ['open', 'smooth', 'single-component'],
+  transforms: smoothTransforms,
   domain(x, y) {
     return Math.hypot(x, y) > 0.4;
   },
@@ -76,7 +83,8 @@ export const rose = {
   },
   [getEvaluationKey()](params, x, y) {
     const radius = Math.hypot(x, y);
-    return radius - params.a * Math.cos(params.k * Math.atan2(y, x));
+    const cosine = Math.cos(params.k * Math.atan2(y, x));
+    return radius * radius - params.a * params.a * cosine * cosine;
   },
   getLevel() {
     return 0;
@@ -90,13 +98,16 @@ export const rose = {
     };
   },
   format(params) {
-    return `r = ${fmtN(params.a)} cos(${params.k}θ)`;
+    return `r² = ${fmtN(params.a * params.a)}cos²(${params.k}θ)`;
   },
 };
 
 export const spiral = {
   ...common,
   id: 'spiral',
+  // atan2 only exposes the principal angle. Keep this definition for the
+  // future parametric contour path, but do not offer it as a sampled option.
+  enabled: false,
   complexity: 5,
   tags: ['open', 'piecewise-smooth', 'single-component'],
   generation: generation(4, 1),

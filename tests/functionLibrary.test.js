@@ -36,4 +36,25 @@ describe('expanded mathematical function library', () => {
     expect(reciprocalSum.domain(1, -0.2)).toBe(false);
     expect(reciprocalSum.domain(1, -1)).toBe(true);
   });
+
+  it('uses the squared implicit rose equation for negative-radius petals', () => {
+    const rose = getFunction('rose');
+    expect(rose.eval({ a: 2, k: 2 }, 0, -2)).toBeCloseTo(0);
+    expect(rose.format({ a: 2, k: 2 }, 0)).toBe('r² = 4.00cos²(2θ)');
+  });
+
+  it('disables transforms for polar equations except atan2', () => {
+    ['cardioid', 'polarRT', 'rose', 'spiral'].forEach((id) => {
+      expect(getFunction(id).transforms).toEqual({
+        translate: false,
+        rotate: false,
+        scale: false,
+      });
+    });
+    expect(getFunction('atan2').transforms).toEqual({
+      translate: true,
+      rotate: true,
+      scale: true,
+    });
+  });
 });

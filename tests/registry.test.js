@@ -4,7 +4,8 @@ import { getFunction, getFunctions, validateRegistry } from '../src/game/functio
 describe('function registry', () => {
   it('validates all definitions and difficulty references', () => {
     expect(validateRegistry()).toBe(true);
-    expect(getFunctions()).toHaveLength(28);
+    expect(getFunctions()).toHaveLength(27);
+    expect(getFunctions({ includeDisabled: true })).toHaveLength(28);
   });
 
   it('filters by metadata', () => {
@@ -29,6 +30,11 @@ describe('function registry', () => {
     expect(affine.domain(0, 0)).toBe(true);
     expect(affine.inDomain(0, 0)).toBe(true);
     expect(getFunction('not-a-function')).toBeUndefined();
+  });
+
+  it('keeps disabled definitions out of the default question pool', () => {
+    expect(getFunctions({ family: 'polar' }).map((fn) => fn.id)).not.toContain('spiral');
+    expect(getFunction('spiral')).toBeTruthy();
   });
 
   it('reports unknown difficulty function ids', () => {

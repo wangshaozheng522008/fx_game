@@ -41,6 +41,7 @@ export function getFunctions(filter = {}) {
   const tags = Array.isArray(filter.tags) ? filter.tags : [];
   const families = Array.isArray(filter.families) ? filter.families : [];
   return runtimeDefinitions.filter((definition) => {
+    if (filter.includeDisabled !== true && definition.enabled === false) return false;
     if (filter.family && definition.family !== filter.family) return false;
     if (families.length && !families.includes(definition.family)) return false;
     if (filter.maxComplexity !== undefined && definition.complexity > filter.maxComplexity) return false;
