@@ -159,6 +159,7 @@ function beginRound() {
   game.deadline = performance.now() + game.difficulty.seconds * 1000;
   game.picked = -1;
   game.hit = null;
+  game.answerRemain = 0;
   game.beamT = 0;
   game.beamSamples = null;
   game.banner = null;
@@ -184,6 +185,7 @@ function startGame() {
     deadline: 0,
     picked: -1,
     hit: null,
+    answerRemain: 0,
     beamT: 0,
     beamSamples: null,
     banner: null,
@@ -198,6 +200,10 @@ function startGame() {
 
 function resolvePick(index, timedOut) {
   if (!game || game.phase !== 'choice') return;
+  game.answerRemain = Math.max(
+    0,
+    (game.deadline - performance.now()) / 1000,
+  );
   const points = roundPoints(game.round);
   const fn = timedOut ? null : game.round.options[index];
   const hit = Boolean(fn && hitsAllTargets(fn, game.round.player, points));
@@ -225,8 +231,9 @@ function finishBeam() {
   game.settleAt = performance.now() + SETTLE_MS;
   game.particles = spawnBurst(game.round, hit);
   if (hit) {
-    const remain = Math.max(0, (game.deadline - performance.now()) / 1000);
-    const gained = Math.round((100 + Math.floor(remain * 8)) * game.difficulty.scoreMul);
+    const gained = Math.round(
+      (100 + Math.floor(game.answerRemain * 8)) * game.difficulty.scoreMul,
+    );
     game.score += gained;
     game.banner = { text: `HIT +${gained}`, color: '#7CFF6B' };
     sfxHit();
@@ -248,8 +255,11 @@ function afterSettle() {
 }
 
 function loop(now) {
+  if (!game || game.phase === 'over') {
+    raf = 0;
+    return;
+  }
   raf = window.requestAnimationFrame(loop);
-  if (!game || game.phase === 'over') return;
   game.now = now;
   game.particles = game.particles
     .map((p) => ({
