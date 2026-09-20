@@ -131,8 +131,10 @@ export function createRenderer(canvas) {
     const points = roundPoints(state);
     clear();
     drawGrid();
-    if (state.beamSamples) {
-      drawBeam(state.beamSamples.primary, state.beamT, state.hit);
+    if (state.beamPaths?.length) {
+      state.beamPaths.forEach((path) => {
+        drawBeam(path, state.beamT, state.hit);
+      });
     }
     drawActor(PLAYER, player.x, player.y, 0);
     const bob = Math.round(Math.sin((state.now || 0) / 180));

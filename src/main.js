@@ -2,6 +2,7 @@ import './styles/app.css';
 import { showToast } from './lib/toast.js';
 import { BEAM_MS, MAX_LIVES, SETTLE_MS } from './game/constants.js';
 import { DEFAULT_DIFFICULTY_ID, getDifficulty } from './game/difficulties.js';
+import { buildBeamPaths } from './game/beamPath.js';
 import { createRound, hitsAllTargets, sampleIsoline } from './game/mathFns.js';
 import { validateRegistry } from './game/functions/registry.js';
 import { createRenderer } from './game/render.js';
@@ -182,6 +183,7 @@ function beginRound() {
     game.answerRemain = 0;
     game.beamT = 0;
     game.beamSamples = null;
+    game.beamPaths = [];
     game.banner = null;
     game.particles = [];
     game.warnTick = 6;
@@ -213,6 +215,7 @@ function startGame() {
       answerRemain: 0,
       beamT: 0,
       beamSamples: null,
+      beamPaths: [],
       banner: null,
       particles: [],
       warnTick: 6,
@@ -243,6 +246,7 @@ function resolvePick(index, timedOut) {
   if (timedOut) {
     game.banner = { text: 'TIME UP', color: '#ff8fa0' };
     game.beamSamples = { polylines: [], primary: null };
+    game.beamPaths = [];
     game.beamT = 1;
     finishBeam();
     return;
@@ -251,7 +255,13 @@ function resolvePick(index, timedOut) {
   game.phase = 'beam';
   game.beamT = 0;
   game.beamStarted = performance.now();
-  game.beamSamples = sampleIsoline(fn, game.round.player);
+  const beamSamples = sampleIsoline(fn, game.round.player);
+  game.beamSamples = beamSamples;
+  game.beamPaths = buildBeamPaths(
+    beamSamples.primary,
+    game.round.player,
+    points,
+  );
 }
 
 function finishBeam() {
