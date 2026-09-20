@@ -156,81 +156,6 @@ function tryComponent(fn, level, table, actorCount, minComponentLength) {
   return null;
 }
 
-function canAddAcrossComponents(candidate, candidateDistance, candidateTable, selected, selectedDistances, selectedTables) {
-  return selected.every((point, index) => {
-    const sameComponent = selectedTables[index] === candidateTable;
-    const arcEnough = !sameComponent
-      || arcDistance(selectedDistances[index], candidateDistance, candidateTable) >= MIN_ARC_DISTANCE;
-    return distance(point, candidate) >= MIN_WORLD_DISTANCE && arcEnough;
-  });
-}
-
-function tryAcrossComponents(fn, level, tables, actorCount) {
-  const candidatesByTable = tables.map((table) => {
-    const samples = [];
-    const sampleCount = Math.max(256, Math.ceil(table.length * 32));
-    for (let index = 0; index < sampleCount; index += 1) {
-      const candidateDistance = (index + 0.5) * table.length / sampleCount;
-      const candidate = sampleAtDistance(table, candidateDistance);
-      if (candidate && isOnLevel(fn, level, candidate)) {
-        samples.push({ point: candidate, distance: candidateDistance });
-      }
-    }
-    return samples;
-  });
-  if (candidatesByTable.some((candidates) => candidates.length === 0)) return null;
-
-  for (let attempt = 0; attempt < SAMPLE_ATTEMPTS; attempt += 1) {
-    const selected = [];
-    const selectedDistances = [];
-    const selectedTables = [];
-    const firstTableIndex = Math.floor(Math.random() * tables.length);
-    const firstTable = tables[firstTableIndex];
-    const firstCandidate = candidatesByTable[firstTableIndex][
-      Math.floor(Math.random() * candidatesByTable[firstTableIndex].length)
-    ];
-    selected.push(firstCandidate.point);
-    selectedDistances.push(firstCandidate.distance);
-    selectedTables.push(firstTable);
-
-    let complete = true;
-    for (let actorIndex = 1; actorIndex < actorCount; actorIndex += 1) {
-      let added = false;
-      const preferredIndex = (firstTableIndex + actorIndex) % tables.length;
-      const tableIndices = [
-        preferredIndex,
-        ...tables.map((_table, index) => index).filter((index) => index !== preferredIndex),
-      ];
-      for (const tableIndex of tableIndices) {
-        const candidateTable = tables[tableIndex];
-        const candidates = shuffle(candidatesByTable[tableIndex]);
-        for (const candidateData of candidates) {
-          if (!canAddAcrossComponents(
-            candidateData.point,
-            candidateData.distance,
-            candidateTable,
-            selected,
-            selectedDistances,
-            selectedTables,
-          )) continue;
-          selected.push(candidateData.point);
-          selectedDistances.push(candidateData.distance);
-          selectedTables.push(candidateTable);
-          added = true;
-          break;
-        }
-        if (added) break;
-      }
-      if (!added) {
-        complete = false;
-        break;
-      }
-    }
-    if (complete) return selected;
-  }
-  return null;
-}
-
 export function sampleActors({ fn, level, polylines, actorCount }) {
   if (!Number.isInteger(actorCount) || actorCount < 1 || !Array.isArray(polylines)) return null;
   const generation = fn?.type?.generation || fn?.generation;
@@ -246,7 +171,7 @@ export function sampleActors({ fn, level, polylines, actorCount }) {
     const actors = tryComponent(fn, level, table, actorCount, minComponentLength);
     if (actors) return actors;
   }
-  return tryAcrossComponents(fn, level, tables, actorCount);
+  return null;
 }
 
 export { distance, makeArcTable };

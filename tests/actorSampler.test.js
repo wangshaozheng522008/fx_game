@@ -75,17 +75,16 @@ describe('generic contour actor sampler', () => {
     })).toBeNull();
   });
 
-  it('can distribute actors across separate valid components', () => {
+  it('rejects actors spread across separate components', () => {
     const actors = sampleActors({
       fn: circleFn,
       level: 25,
       polylines: [
-        circleArc(5, 0, Math.PI / 2),
-        circleArc(5, Math.PI, Math.PI * 1.5),
+        circleArc(5, 0, 0.8),
+        circleArc(5, Math.PI, Math.PI + 0.8),
       ],
       actorCount: 4,
     });
-    expect(actors).toHaveLength(4);
-    actors.forEach((point) => expect(point.x ** 2 + point.y ** 2).toBeCloseTo(25, 1));
+    expect(actors).toBeNull();
   });
 });

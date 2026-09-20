@@ -19,6 +19,6 @@
     "xhs-minitool-vite-config": "^0.1.2"
   },
   "engines": {
-    "node": ">=18.17.0"
+    "node": ">=22.12.0"
   }
 }
