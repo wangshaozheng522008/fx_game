@@ -3,10 +3,42 @@ import { getDifficulty } from './difficulties.js';
 import { distanceToPolyline, polylineLength } from './contour/geometry.js';
 import { marchingSquares } from './contour/marchingSquares.js';
 import { stitchSegments } from './contour/stitchSegments.js';
+import { sampleActors } from './generator/actorSampler.js';
 
 const MIN_R = 2.3;
 const MAX_R = WORLD_RANGE - 0.9;
-const MIN_SEP = 2.1;
+
+const generationStats = {
+  rounds: 0,
+  attempts: 0,
+  fallbacks: 0,
+  byType: {},
+};
+
+export function resetGenerationStats() {
+  generationStats.rounds = 0;
+  generationStats.attempts = 0;
+  generationStats.fallbacks = 0;
+  generationStats.byType = {};
+}
+
+export function getGenerationStats() {
+  return {
+    rounds: generationStats.rounds,
+    attempts: generationStats.attempts,
+    fallbacks: generationStats.fallbacks,
+    byType: Object.fromEntries(
+      Object.entries(generationStats.byType).map(([id, stats]) => [id, { ...stats }]),
+    ),
+  };
+}
+
+function typeGenerationStats(id) {
+  if (!generationStats.byType[id]) {
+    generationStats.byType[id] = { attempts: 0, successes: 0 };
+  }
+  return generationStats.byType[id];
+}
 
 function rand(min, max) {
   return min + Math.random() * (max - min);
@@ -38,10 +70,6 @@ function hypot(x, y) {
 function inBoard(p) {
   const r = hypot(p.x, p.y);
   return r >= MIN_R && r <= MAX_R && Math.abs(p.x) <= 7.4 && Math.abs(p.y) <= 7.4;
-}
-
-function farFrom(p, others) {
-  return others.every((q) => hypot(p.x - q.x, p.y - q.y) >= MIN_SEP);
 }
 
 function angDiff(a, b) {
@@ -132,21 +160,12 @@ const TYPES = {
     label(p) {
       return joinTerms(term(p.a, 'x'), term(p.b, 'y'));
     },
-    randomParams() {
+    createParams() {
       return { a: quantize(rand(0.4, 1.8) * (Math.random() < 0.5 ? -1 : 1)), b: quantize(rand(0.4, 1.8) * (Math.random() < 0.5 ? -1 : 1)) };
-    },
-    sample(params, count) {
-      const player = randomBoardPoint();
-      if (!player) return null;
-      const len = hypot(params.a, params.b) || 1;
-      const dx = -params.b / len;
-      const dy = params.a / len;
-      return fillAlong((t) => makePoint(player.x + dx * t, player.y + dy * t), count, [player]);
     },
   },
   radialQuad: {
     id: 'radialQuad',
-    closed: false,
     inDomain() {
       return true;
     },
@@ -156,12 +175,8 @@ const TYPES = {
     label() {
       return 'x² + y²';
     },
-    randomParams() {
+    createParams() {
       return {};
-    },
-    sample(_params, count) {
-      const r = rand(3.0, 6.6);
-      return fillAngles(count, (ang) => makePoint(r * Math.cos(ang), r * Math.sin(ang)));
     },
   },
   axisX: {
@@ -175,12 +190,8 @@ const TYPES = {
     label() {
       return 'x';
     },
-    randomParams() {
+    createParams() {
       return {};
-    },
-    sample(_params, count) {
-      const x = rand(2.4, 6.2) * (Math.random() < 0.5 ? -1 : 1);
-      return fillAlong((t) => makePoint(x, t), count, [], rand(-6, 6));
     },
   },
   axisY: {
@@ -194,12 +205,8 @@ const TYPES = {
     label() {
       return 'y';
     },
-    randomParams() {
+    createParams() {
       return {};
-    },
-    sample(_params, count) {
-      const y = rand(2.4, 6.2) * (Math.random() < 0.5 ? -1 : 1);
-      return fillAlong((t) => makePoint(t, y), count, [], rand(-6, 6));
     },
   },
   sinxy: {
@@ -213,12 +220,8 @@ const TYPES = {
     label() {
       return 'sin(xy)';
     },
-    randomParams() {
+    createParams() {
       return {};
-    },
-    sample(_params, count) {
-      const alpha = rand(0.4, 2.6) * (Math.random() < 0.5 ? -1 : 1);
-      return fillProduct(count, alpha);
     },
   },
   cosSum: {
@@ -232,21 +235,8 @@ const TYPES = {
     label() {
       return 'cos(x) + cos(y)';
     },
-    randomParams() {
+    createParams() {
       return {};
-    },
-    sample(_params, count) {
-      const c = rand(-1.2, 1.2);
-      const pts = [];
-      for (let i = 0; i < 80 && pts.length < count; i += 1) {
-        const x = rand(-6.5, 6.5);
-        const rest = c - Math.cos(x);
-        if (Math.abs(rest) > 1) continue;
-        const y = Math.acos(rest) * (Math.random() < 0.5 ? -1 : 1);
-        const p = makePoint(x, y);
-        if (inBoard(p) && farFrom(p, pts)) pts.push(p);
-      }
-      return pts.length === count ? pts : null;
     },
   },
   expSum: {
@@ -260,14 +250,8 @@ const TYPES = {
     label() {
       return 'e^{x+y}';
     },
-    randomParams() {
+    createParams() {
       return {};
-    },
-    sample(_params, count) {
-      const s = rand(-2.5, 2.5);
-      const dir = Math.SQRT1_2;
-      const mid = rand(-2, 2);
-      return fillAlong((t) => makePoint((mid + t) * dir, s - (mid + t) * dir), count, []);
     },
   },
   bilinear: {
@@ -281,23 +265,12 @@ const TYPES = {
     label() {
       return 'xy';
     },
-    randomParams() {
+    createParams() {
       return {};
-    },
-    sample(_params, count) {
-      const c = rand(2.2, 8) * (Math.random() < 0.5 ? -1 : 1);
-      const pts = [];
-      for (let i = 0; i < 60 && pts.length < count; i += 1) {
-        const x = rand(1.6, 6.4) * (Math.random() < 0.5 ? -1 : 1);
-        const p = makePoint(x, c / x);
-        if (inBoard(p) && farFrom(p, pts)) pts.push(p);
-      }
-      return pts.length === count ? pts : null;
     },
   },
   ellipse: {
     id: 'ellipse',
-    closed: true,
     inDomain() {
       return true;
     },
@@ -313,16 +286,12 @@ const TYPES = {
     format(p, level) {
       return `${this.label(p)} = ${fmtN(level)}`;
     },
-    randomParams() {
+    createParams() {
       return { a: quantize(rand(3.4, 6.8)), b: quantize(rand(2.6, 5.8)) };
-    },
-    sample(params, count) {
-      return fillAngles(count, (ang) => makePoint(params.a * Math.cos(ang), params.b * Math.sin(ang)));
     },
   },
   circleFixed: {
     id: 'circleFixed',
-    closed: true,
     inDomain() {
       return true;
     },
@@ -338,12 +307,9 @@ const TYPES = {
     format(p, level) {
       return `x² + y² = ${fmtN(level)}`;
     },
-    randomParams() {
+    createParams() {
       const r = quantize(rand(3.6, 6.4));
       return { r: r, r2: round2(r * r) };
-    },
-    sample(params, count) {
-      return fillAngles(count, (ang) => makePoint(params.r * Math.cos(ang), params.r * Math.sin(ang)));
     },
   },
   diamond: {
@@ -357,27 +323,8 @@ const TYPES = {
     label() {
       return '|x| + |y|';
     },
-    randomParams() {
+    createParams() {
       return {};
-    },
-    sample(_params, count) {
-      const c = rand(3.4, 6.8);
-      const pts = [];
-      const corners = [
-        [c, 0],
-        [0, c],
-        [-c, 0],
-        [0, -c],
-        [c * 0.6, c * 0.4],
-        [-c * 0.5, c * 0.5],
-        [c * 0.45, -c * 0.55],
-        [-c * 0.7, -c * 0.3],
-      ];
-      for (let i = 0; i < corners.length && pts.length < count; i += 1) {
-        const p = makePoint(corners[i][0], corners[i][1]);
-        if (inBoard(p) && farFrom(p, pts)) pts.push(p);
-      }
-      return pts.length === count ? pts : null;
     },
   },
   atan2: {
@@ -391,18 +338,8 @@ const TYPES = {
     label() {
       return 'atan2(y, x)';
     },
-    randomParams() {
+    createParams() {
       return {};
-    },
-    sample(_params, count) {
-      const ang = rand(-Math.PI + 0.3, Math.PI - 0.3);
-      const pts = [];
-      for (let i = 0; i < 40 && pts.length < count; i += 1) {
-        const r = rand(2.6, 7.0);
-        const p = makePoint(r * Math.cos(ang), r * Math.sin(ang));
-        if (inBoard(p) && farFrom(p, pts)) pts.push(p);
-      }
-      return pts.length === count ? pts : null;
     },
   },
   stretchRad: {
@@ -416,16 +353,8 @@ const TYPES = {
     label() {
       return '√(x² + 4y²)';
     },
-    randomParams() {
+    createParams() {
       return {};
-    },
-    sample(_params, count) {
-      const c = rand(3.2, 6.4);
-      return fillAngles(count, (ang) => {
-        const x = c * Math.cos(ang);
-        const y = (c * Math.sin(ang)) / 2;
-        return makePoint(x, y);
-      });
     },
   },
   gaussian: {
@@ -439,17 +368,12 @@ const TYPES = {
     label() {
       return 'e^{-(x²+y²)}';
     },
-    randomParams() {
+    createParams() {
       return {};
-    },
-    sample(_params, count) {
-      const r = rand(2.6, 5.8);
-      return fillAngles(count, (ang) => makePoint(r * Math.cos(ang), r * Math.sin(ang)));
     },
   },
   cardioid: {
     id: 'cardioid',
-    closed: true,
     inDomain(x, y) {
       return hypot(x, y) > 0.2;
     },
@@ -467,18 +391,8 @@ const TYPES = {
     format(p) {
       return `r = ${fmtN(p.a)}(1 − cos θ)`;
     },
-    randomParams() {
+    createParams() {
       return { a: quantize(rand(2.8, 4.2)) };
-    },
-    sample(params, count) {
-      const pts = [];
-      for (let i = 0; i < 70 && pts.length < count; i += 1) {
-        const th = rand(0.45, Math.PI * 2 - 0.45);
-        const r = params.a * (1 - Math.cos(th));
-        const p = makePoint(r * Math.cos(th), r * Math.sin(th));
-        if (inBoard(p) && farFrom(p, pts)) pts.push(p);
-      }
-      return pts.length === count ? pts : null;
     },
   },
   saddle: {
@@ -492,21 +406,8 @@ const TYPES = {
     label() {
       return 'x² − y²';
     },
-    randomParams() {
+    createParams() {
       return {};
-    },
-    sample(_params, count) {
-      const c = rand(2, 10) * (Math.random() < 0.5 ? -1 : 1);
-      const pts = [];
-      for (let i = 0; i < 80 && pts.length < count; i += 1) {
-        const x = rand(2.2, 6.6) * (Math.random() < 0.5 ? -1 : 1);
-        const d = x * x - c;
-        if (d < 0.8) continue;
-        const y = Math.sqrt(d) * (Math.random() < 0.5 ? -1 : 1);
-        const p = makePoint(x, y);
-        if (inBoard(p) && farFrom(p, pts)) pts.push(p);
-      }
-      return pts.length === count ? pts : null;
     },
   },
   expCos: {
@@ -520,21 +421,8 @@ const TYPES = {
     label() {
       return 'e^{x} cos(y)';
     },
-    randomParams() {
+    createParams() {
       return {};
-    },
-    sample(_params, count) {
-      const c = rand(-0.7, 0.7) || 0.35;
-      const pts = [];
-      for (let i = 0; i < 90 && pts.length < count; i += 1) {
-        const x = rand(-1.6, 1.4);
-        const amp = Math.exp(x);
-        if (Math.abs(c) > amp) continue;
-        const y = Math.acos(c / amp) * (Math.random() < 0.5 ? -1 : 1);
-        const p = makePoint(x, y);
-        if (inBoard(p) && farFrom(p, pts)) pts.push(p);
-      }
-      return pts.length === count ? pts : null;
     },
   },
   polarRT: {
@@ -548,20 +436,8 @@ const TYPES = {
     label() {
       return 'r · θ';
     },
-    randomParams() {
+    createParams() {
       return {};
-    },
-    sample(_params, count) {
-      const c = rand(2.5, 8) * (Math.random() < 0.5 ? -1 : 1);
-      const pts = [];
-      for (let i = 0; i < 80 && pts.length < count; i += 1) {
-        const th = rand(0.5, 2.5) * Math.sign(c || 1);
-        if (Math.abs(th) < 0.35) continue;
-        const r = c / th;
-        const p = makePoint(r * Math.cos(th), r * Math.sin(th));
-        if (inBoard(p) && farFrom(p, pts)) pts.push(p);
-      }
-      return pts.length === count ? pts : null;
     },
   },
 };
@@ -572,37 +448,6 @@ function randomBoardPoint() {
     if (inBoard(p)) return p;
   }
   return makePoint(3.2, 2.4);
-}
-
-function fillAlong(atT, count, seed, startT) {
-  const pts = seed.slice();
-  for (let i = 0; i < 50 && pts.length < count; i += 1) {
-    const t = (startT || 0) + rand(-6.5, 6.5);
-    const p = atT(t);
-    if (inBoard(p) && farFrom(p, pts)) pts.push(p);
-  }
-  return pts.length === count ? pts : null;
-}
-
-function fillAngles(count, atAng) {
-  const pts = [];
-  const offset = rand(0, Math.PI * 2);
-  for (let k = 0; k < 12 && pts.length < count; k += 1) {
-    const ang = offset + (k * Math.PI * 2) / 12 + rand(-0.12, 0.12);
-    const p = atAng(ang);
-    if (inBoard(p) && farFrom(p, pts)) pts.push(p);
-  }
-  return pts.length === count ? pts : null;
-}
-
-function fillProduct(count, alpha) {
-  const pts = [];
-  for (let i = 0; i < 50 && pts.length < count; i += 1) {
-    const x = rand(1.5, 6.2) * (Math.random() < 0.5 ? -1 : 1);
-    const p = makePoint(x, alpha / x);
-    if (inBoard(p) && farFrom(p, pts)) pts.push(p);
-  }
-  return pts.length === count ? pts : null;
 }
 
 function makeFn(typeId, params, correct) {
@@ -638,6 +483,7 @@ function fallbackRound(count) {
 }
 
 export function createRound(wave, difficultyInput) {
+  generationStats.rounds += 1;
   const difficulty = typeof difficultyInput === 'string'
     ? getDifficulty(difficultyInput)
     : difficultyInput || getDifficulty();
@@ -647,11 +493,26 @@ export function createRound(wave, difficultyInput) {
   for (let attempt = 0; attempt < 70; attempt += 1) {
     const typeId = pick(pool);
     const type = TYPES[typeId];
-    const correct = makeFn(typeId, type.randomParams(), true);
-    const actors = type.sample(correct.params, actorCount);
+    generationStats.attempts += 1;
+    typeGenerationStats(typeId).attempts += 1;
+    const correct = makeFn(typeId, type.createParams(), true);
+    const seedPlayer = randomBoardPoint();
+    const level = resolveLevel(correct, seedPlayer);
+    if (!Number.isFinite(level)) continue;
+    correct.level = level;
+    const contour = sampleIsoline(correct, seedPlayer);
+    const actors = sampleActors({
+      fn: correct,
+      level,
+      polylines: contour.polylines,
+      actorCount,
+    });
     if (!actors || actors.length !== actorCount) continue;
     const player = actors[0];
     const points = actors.slice(1);
+    // The contour level for a dynamic function belongs to the actual player,
+    // not merely to the seed point used to find a usable contour.
+    correct.level = resolveLevel(correct, player);
     if (!hitsAllTargets(correct, player, points)) continue;
 
     const used = new Set([correct.id]);
@@ -660,7 +521,7 @@ export function createRound(wave, difficultyInput) {
       const otherId = pick(pool.filter((id) => !used.has(id)));
       if (!otherId) break;
       const otherType = TYPES[otherId];
-      const wrong = makeFn(otherId, otherType.randomParams(), false);
+      const wrong = makeFn(otherId, otherType.createParams(), false);
       if (hitsAllTargets(wrong, player, points)) continue;
       used.add(otherId);
       options.push(wrong);
@@ -671,6 +532,7 @@ export function createRound(wave, difficultyInput) {
       fn.label = equationFor(fn, player);
     });
     const shuffled = shuffle(options);
+    typeGenerationStats(typeId).successes += 1;
     return {
       player,
       points,
@@ -679,6 +541,7 @@ export function createRound(wave, difficultyInput) {
       answerIndex: shuffled.findIndex((item) => item.correct),
     };
   }
+  generationStats.fallbacks += 1;
   return fallbackRound(actorCount);
 }
 
