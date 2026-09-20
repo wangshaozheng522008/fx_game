@@ -17,49 +17,57 @@
   <body>
     <div id="app">
       <section id="screen-title" class="screen screen-title">
-        <p class="eyebrow">PIXEL MATH ARENA</p>
-        <img class="game-icon" src="./icons/icon.png" width="96" height="96" alt="函数射线" />
-        <h1 class="logo-title">函数射线</h1>
-        <p class="logo-en">FX GAME</p>
-        <p class="slogan">选对等值线，沿曲线射出攻击并击中全部怪物</p>
-        <div class="diff-grid" id="diff-picker">
-          <button type="button" class="diff-card is-on" data-id="euclid">
-            <span class="diff-tier">入门</span>
-            <span class="diff-title">欧几里得级</span>
-            <span class="diff-desc">公理入门 · 20秒 · 1怪</span>
-          </button>
-          <button type="button" class="diff-card" data-id="archimedes">
-            <span class="diff-tier">进阶</span>
-            <span class="diff-title">阿基米德级</span>
-            <span class="diff-desc">巧思进阶 · 25秒 · 1怪</span>
-          </button>
-          <button type="button" class="diff-card" data-id="gauss">
-            <span class="diff-tier">困难</span>
-            <span class="diff-title">高斯级</span>
-            <span class="diff-desc">严谨挑战 · 30秒 · 2怪</span>
-          </button>
-          <button type="button" class="diff-card" data-id="riemann">
-            <span class="diff-tier">极限</span>
-            <span class="diff-title">黎曼级</span>
-            <span class="diff-desc">抽象极限 · 30秒 · 3怪</span>
-          </button>
+        <div class="screen-body">
+          <p class="eyebrow">PIXEL MATH ARENA</p>
+          <img class="game-icon" src="./icons/icon.png" width="96" height="96" alt="函数射线" />
+          <h1 class="logo-title">函数射线</h1>
+          <p class="logo-en">FX GAME</p>
+          <p class="slogan">选对等值线，沿曲线射出攻击并击中全部怪物</p>
+          <div class="diff-grid" id="diff-picker">
+            <button type="button" class="diff-card is-on" data-id="euclid">
+              <span class="diff-tier">入门</span>
+              <span class="diff-title">欧几里得级</span>
+              <span class="diff-desc">公理入门 · 20秒 · 1怪</span>
+            </button>
+            <button type="button" class="diff-card" data-id="archimedes">
+              <span class="diff-tier">进阶</span>
+              <span class="diff-title">阿基米德级</span>
+              <span class="diff-desc">巧思进阶 · 25秒 · 1怪</span>
+            </button>
+            <button type="button" class="diff-card" data-id="gauss">
+              <span class="diff-tier">困难</span>
+              <span class="diff-title">高斯级</span>
+              <span class="diff-desc">严谨挑战 · 30秒 · 2怪</span>
+            </button>
+            <button type="button" class="diff-card" data-id="riemann">
+              <span class="diff-tier">极限</span>
+              <span class="diff-title">黎曼级</span>
+              <span class="diff-desc">抽象极限 · 30秒 · 3怪</span>
+            </button>
+          </div>
+          <p class="best-line">本档最高 <span id="title-best">0</span></p>
         </div>
-        <p class="best-line">本档最高 <span id="title-best">0</span></p>
-        <button type="button" class="pixel-btn pixel-btn-main" id="btn-start">开始挑战</button>
-        <button type="button" class="pixel-btn" id="btn-help">玩法说明</button>
+        <div class="screen-actions">
+          <button type="button" class="pixel-btn pixel-btn-main" id="btn-start">开始挑战</button>
+          <button type="button" class="pixel-btn" id="btn-help">玩法说明</button>
+        </div>
       </section>
 
       <section id="screen-help" class="screen screen-help" hidden>
-        <h2>玩法说明</h2>
-        <ul class="help-list">
-          <li>角色随机出现在平面上，不再固定在原点。</li>
-          <li>选项是 F(x, y) 的等值线：过角色的那条曲线还要击中全部怪物。</li>
-          <li>入门 20 秒 1 怪；进阶 25 秒 1 怪；困难 30 秒 2 怪；极限 30 秒 3 怪。</li>
-          <li>射线沿等值线发射，允许 5% 数值偏差，缺一不可。</li>
-          <li>共 3 条命。困难和极限必须一条等值线同时打中全部目标。</li>
-        </ul>
-        <p class="help-example">例：入门可选 x² + y²（圆）或 ax + by（直线）</p>
-        <button type="button" class="pixel-btn pixel-btn-main" id="btn-help-back">返回</button>
+        <div class="screen-body">
+          <h2>玩法说明</h2>
+          <ul class="help-list">
+            <li>角色随机出现在平面上，不再固定在原点。</li>
+            <li>选项是 F(x, y) 的等值线：过角色的那条曲线还要击中全部怪物。</li>
+            <li>入门 20 秒 1 怪；进阶 25 秒 1 怪；困难 30 秒 2 怪；极限 30 秒 3 怪。</li>
+            <li>射线沿等值线发射，允许 5% 数值偏差，缺一不可。</li>
+            <li>共 3 条命。困难和极限必须一条等值线同时打中全部目标。</li>
+          </ul>
+          <p class="help-example">例：入门可选 x² + y²（圆）或 ax + by（直线）</p>
+        </div>
+        <div class="screen-actions">
+          <button type="button" class="pixel-btn pixel-btn-main" id="btn-help-back">返回</button>
+        </div>
       </section>
 
       <section id="screen-play" class="screen screen-play" hidden>
@@ -93,14 +101,18 @@
       </section>
 
       <section id="screen-over" class="screen screen-over" hidden>
-        <p class="eyebrow">GAME OVER</p>
-        <h2>挑战结束</h2>
-        <p class="over-score">本局 <span id="over-score">0</span></p>
-        <p class="over-best">最高 <span id="over-best">0</span></p>
-        <p id="over-wave" class="over-wave">坚持到第 1 波</p>
-        <button type="button" class="pixel-btn pixel-btn-main" id="btn-retry">再来一局</button>
-        <button type="button" class="pixel-btn" id="btn-share" hidden>分享成绩</button>
-        <button type="button" class="pixel-btn" id="btn-home">返回首页</button>
+        <div class="screen-body">
+          <p class="eyebrow">GAME OVER</p>
+          <h2>挑战结束</h2>
+          <p class="over-score">本局 <span id="over-score">0</span></p>
+          <p class="over-best">最高 <span id="over-best">0</span></p>
+          <p id="over-wave" class="over-wave">坚持到第 1 波</p>
+        </div>
+        <div class="screen-actions">
+          <button type="button" class="pixel-btn pixel-btn-main" id="btn-retry">再来一局</button>
+          <button type="button" class="pixel-btn" id="btn-share" hidden>分享成绩</button>
+          <button type="button" class="pixel-btn" id="btn-home">返回首页</button>
+        </div>
       </section>
     </div>
     <div id="toast" class="toast" hidden></div>

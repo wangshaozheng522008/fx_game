@@ -12,7 +12,15 @@ function pix(n) {
 }
 
 export function createRenderer(canvas) {
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas ? canvas.getContext('2d') : null;
+  if (!canvas || !ctx) {
+    return {
+      render() {},
+      worldToPix(x, y) {
+        return { px: 0, py: 0 };
+      },
+    };
+  }
   canvas.width = VIEW;
   canvas.height = VIEW;
   ctx.imageSmoothingEnabled = false;

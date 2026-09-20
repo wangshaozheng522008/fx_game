@@ -40,7 +40,31 @@ let game = null;
 let selectedDifficulty = getDifficulty(DEFAULT_DIFFICULTY_ID);
 
 function canShare() {
-  return Boolean(window.xhs && window.xhs.miniTool && window.xhs.miniTool.postNote);
+  try {
+    return Boolean(window.xhs && window.xhs.miniTool && window.xhs.miniTool.postNote);
+  } catch {
+    return false;
+  }
+}
+
+function onTap(el, handler) {
+  if (!el) return;
+  let last = 0;
+  const run = () => {
+    if (el.disabled) return;
+    const now = Date.now();
+    if (now - last < 350) return;
+    last = now;
+    handler();
+  };
+  el.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    run();
+  });
+  el.addEventListener('pointerup', (ev) => {
+    if (ev.button) return;
+    run();
+  });
 }
 
 function showScreen(name) {
@@ -154,48 +178,57 @@ function endGame() {
 }
 
 function beginRound() {
-  game.round = createRound(game.wave, game.difficulty);
-  game.phase = 'choice';
-  game.deadline = performance.now() + game.difficulty.seconds * 1000;
-  game.picked = -1;
-  game.hit = null;
-  game.answerRemain = 0;
-  game.beamT = 0;
-  game.beamSamples = null;
-  game.banner = null;
-  game.particles = [];
-  game.warnTick = 6;
-  paintChoices(game.round, null);
-  setChoicesEnabled(true);
-  refreshHud();
-  updateTimer(game.difficulty.seconds);
+  try {
+    game.round = createRound(game.wave, game.difficulty);
+    game.phase = 'choice';
+    game.deadline = performance.now() + game.difficulty.seconds * 1000;
+    game.picked = -1;
+    game.hit = null;
+    game.answerRemain = 0;
+    game.beamT = 0;
+    game.beamSamples = null;
+    game.banner = null;
+    game.particles = [];
+    game.warnTick = 6;
+    paintChoices(game.round, null);
+    setChoicesEnabled(true);
+    refreshHud();
+    updateTimer(game.difficulty.seconds);
+  } catch {
+    showToast('题目生成失败，请重开');
+    endGame();
+  }
 }
 
 function startGame() {
-  unlockAudio();
-  applyTheme(selectedDifficulty);
-  game = {
-    difficulty: selectedDifficulty,
-    lives: MAX_LIVES,
-    wave: 1,
-    score: 0,
-    now: 0,
-    phase: 'choice',
-    round: null,
-    deadline: 0,
-    picked: -1,
-    hit: null,
-    answerRemain: 0,
-    beamT: 0,
-    beamSamples: null,
-    banner: null,
-    particles: [],
-    warnTick: 6,
-    settleAt: 0,
-  };
-  showScreen('play');
-  beginRound();
-  if (!raf) raf = window.requestAnimationFrame(loop);
+  try {
+    unlockAudio();
+    applyTheme(selectedDifficulty);
+    game = {
+      difficulty: selectedDifficulty,
+      lives: MAX_LIVES,
+      wave: 1,
+      score: 0,
+      now: 0,
+      phase: 'choice',
+      round: null,
+      deadline: 0,
+      picked: -1,
+      hit: null,
+      answerRemain: 0,
+      beamT: 0,
+      beamSamples: null,
+      banner: null,
+      particles: [],
+      warnTick: 6,
+      settleAt: 0,
+    };
+    showScreen('play');
+    beginRound();
+    if (!raf) raf = window.requestAnimationFrame(loop);
+  } catch {
+    showToast('开局失败，请再点一次开始');
+  }
 }
 
 function resolvePick(index, timedOut) {
@@ -260,61 +293,69 @@ function loop(now) {
     return;
   }
   raf = window.requestAnimationFrame(loop);
-  game.now = now;
-  game.particles = game.particles
-    .map((p) => ({
-      ...p,
-      px: p.px + p.vx,
-      py: p.py + p.vy,
-      life: p.life - 0.03,
-    }))
-    .filter((p) => p.life > 0);
+  try {
+    game.now = now;
+    game.particles = game.particles
+      .map((p) => ({
+        ...p,
+        px: p.px + p.vx,
+        py: p.py + p.vy,
+        life: p.life - 0.03,
+      }))
+      .filter((p) => p.life > 0);
 
-  if (game.phase === 'choice') {
-    const remain = Math.max(0, (game.deadline - now) / 1000);
-    updateTimer(remain);
-    if (remain <= game.warnTick && remain > 0) {
-      sfxTick();
-      game.warnTick -= 1;
+    if (game.phase === 'choice') {
+      const remain = Math.max(0, (game.deadline - now) / 1000);
+      updateTimer(remain);
+      if (remain <= game.warnTick && remain > 0) {
+        sfxTick();
+        game.warnTick -= 1;
+      }
+      if (remain <= 0) resolvePick(-1, true);
+    } else if (game.phase === 'beam') {
+      game.beamT = Math.min(1, (now - game.beamStarted) / BEAM_MS);
+      if (game.beamT >= 1) finishBeam();
+    } else if (game.phase === 'settle') {
+      game.beamT = 1;
+      if (now >= game.settleAt) afterSettle();
     }
-    if (remain <= 0) resolvePick(-1, true);
-  } else if (game.phase === 'beam') {
-    game.beamT = Math.min(1, (now - game.beamStarted) / BEAM_MS);
-    if (game.beamT >= 1) finishBeam();
-  } else if (game.phase === 'settle') {
-    game.beamT = 1;
-    if (now >= game.settleAt) afterSettle();
-  }
 
-  renderer.render(game);
+    renderer.render(game);
+  } catch {
+    /* keep the loop alive so later taps still work */
+  }
 }
 
 function shareScore() {
   if (!canShare() || !game) return;
-  window.xhs.miniTool.postNote({
-    title: '函数射线',
-    content: `我在函数射线「${game.difficulty.title}」打出了 ${game.score} 分，坚持到第 ${game.wave} 波！`,
-  });
+  try {
+    window.xhs.miniTool.postNote({
+      title: '函数射线',
+      content: `我在函数射线「${game.difficulty.title}」打出了 ${game.score} 分，坚持到第 ${game.wave} 波！`,
+    });
+  } catch {
+    showToast('当前环境不能分享');
+  }
 }
 
 diffCards.forEach((card) => {
-  card.addEventListener('click', () => {
+  onTap(card, () => {
     selectDifficulty(card.getAttribute('data-id'));
   });
 });
 
-document.querySelector('#btn-start').addEventListener('click', startGame);
-document.querySelector('#btn-help').addEventListener('click', () => showScreen('help'));
-document.querySelector('#btn-help-back').addEventListener('click', () => showScreen('title'));
-document.querySelector('#btn-retry').addEventListener('click', startGame);
-document.querySelector('#btn-home').addEventListener('click', () => {
+onTap(document.querySelector('#btn-start'), startGame);
+onTap(document.querySelector('#btn-help'), () => showScreen('help'));
+onTap(document.querySelector('#btn-help-back'), () => showScreen('title'));
+onTap(document.querySelector('#btn-retry'), startGame);
+onTap(document.querySelector('#btn-home'), () => {
   applyTheme(selectedDifficulty);
   showScreen('title');
 });
-shareBtn.addEventListener('click', shareScore);
+onTap(shareBtn, shareScore);
 
 choiceBtns.forEach((btn) => {
-  btn.addEventListener('click', () => {
+  onTap(btn, () => {
     const index = Number(btn.getAttribute('data-index'));
     resolvePick(index, false);
   });
@@ -322,4 +363,3 @@ choiceBtns.forEach((btn) => {
 
 selectDifficulty(DEFAULT_DIFFICULTY_ID);
 shareBtn.hidden = !canShare();
-showToast('先选难度，再发射像素射线');

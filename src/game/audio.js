@@ -2,21 +2,28 @@ let ctx = null;
 let unlocked = false;
 
 function getCtx() {
-  if (!ctx) {
+  if (ctx) return ctx;
+  try {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
     ctx = new AC();
+  } catch {
+    ctx = null;
   }
   return ctx;
 }
 
 export function unlockAudio() {
-  const audio = getCtx();
-  if (!audio) return;
-  if (audio.state === 'suspended') {
-    audio.resume().catch(() => {});
+  try {
+    const audio = getCtx();
+    if (!audio) return;
+    if (audio.state === 'suspended') {
+      audio.resume().catch(() => {});
+    }
+    unlocked = true;
+  } catch {
+    unlocked = false;
   }
-  unlocked = true;
 }
 
 function tone(freq, duration, type, gainValue) {
