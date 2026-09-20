@@ -100,10 +100,13 @@ function angularDistance(a, b) {
 
 function isOnLevel(fn, level, point) {
   if (!isBoardPoint(point)) return false;
-  if (fn?.type?.inDomain && !fn.type.inDomain(point.x, point.y)) return false;
-  if (!fn?.type?.F || !Number.isFinite(level)) return true;
+  if (fn?.isInDomain && !fn.isInDomain(point.x, point.y)) return false;
+  if (!fn?.isInDomain && fn?.type?.inDomain && !fn.type.inDomain(point.x, point.y)) return false;
+  if (!fn?.evaluate && !fn?.type?.F || !Number.isFinite(level)) return true;
 
-  const value = fn.type.F(fn.params, point.x, point.y);
+  const value = fn.evaluate
+    ? fn.evaluate(point.x, point.y)
+    : fn.type.F(fn.params, point.x, point.y);
   if (!Number.isFinite(value)) return false;
   if (fn.id === 'atan2') return angularDistance(value, level) <= 0.2;
   return Math.abs(value - level) <= LEVEL_TOLERANCE * Math.max(Math.abs(level), 1);
@@ -155,8 +158,9 @@ function tryComponent(fn, level, table, actorCount, minComponentLength) {
 
 export function sampleActors({ fn, level, polylines, actorCount }) {
   if (!Number.isInteger(actorCount) || actorCount < 1 || !Array.isArray(polylines)) return null;
-  const minComponentLength = Number.isFinite(fn?.type?.generation?.minContourLength)
-    ? fn.type.generation.minContourLength
+  const generation = fn?.type?.generation || fn?.generation;
+  const minComponentLength = Number.isFinite(generation?.minContourLength)
+    ? generation.minContourLength
     : MIN_COMPONENT_LENGTH;
   const tables = polylines
     .map((polyline) => makeArcTable(polyline))

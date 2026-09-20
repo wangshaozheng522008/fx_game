@@ -47,6 +47,16 @@ export function generation(minContourLength = 2.5, maxComponents = 1) {
   return { minContourLength, maxComponents };
 }
 
+export function parameterTier(ctx) {
+  return Math.max(1, Math.floor(Number(ctx?.parameterTier) || 1));
+}
+
+export function tierRange(ctx, ranges) {
+  const tier = parameterTier(ctx);
+  const range = ranges[Math.min(tier, ranges.length) - 1] || ranges[ranges.length - 1];
+  return rand(range[0], range[1]);
+}
+
 export function getEvaluationKey() {
   return String.fromCharCode(101, 118, 97, 108);
 }

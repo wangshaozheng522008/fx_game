@@ -1,4 +1,4 @@
-import { equation, fmtN, generation, getEvaluationKey, smoothTransforms } from '../helpers.js';
+import { equation, fmtN, generation, getEvaluationKey, smoothTransforms, tierRange } from '../helpers.js';
 
 const common = {
   family: 'polar',
@@ -57,8 +57,8 @@ export const cardioid = {
   getLevel() {
     return 0;
   },
-  createParams() {
-    return { a: Math.round((2.8 + Math.random() * 1.4) * 100) / 100 };
+  createParams(ctx) {
+    return { a: Math.round(tierRange(ctx, [[3.2, 3.8], [2.8, 4.2], [2.4, 4.8]]) * 100) / 100 };
   },
   format(params) {
     return `r = ${fmtN(params.a)}(1 − cos θ)`;

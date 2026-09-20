@@ -15,6 +15,10 @@ describe('function registry', () => {
     const simple = getFunctions({ maxComplexity: 1 });
     expect(simple.map((fn) => fn.id)).toEqual(expect.arrayContaining(['affine', 'axisX', 'axisY']));
     simple.forEach((fn) => expect(fn.complexity).toBeLessThanOrEqual(1));
+
+    const conics = getFunctions({ families: ['conic'] });
+    expect(conics.length).toBeGreaterThan(0);
+    conics.forEach((fn) => expect(fn.family).toBe('conic'));
   });
 
   it('exposes the evaluation and compatibility interfaces', () => {

@@ -39,8 +39,10 @@ export function getFunction(id) {
 
 export function getFunctions(filter = {}) {
   const tags = Array.isArray(filter.tags) ? filter.tags : [];
+  const families = Array.isArray(filter.families) ? filter.families : [];
   return runtimeDefinitions.filter((definition) => {
     if (filter.family && definition.family !== filter.family) return false;
+    if (families.length && !families.includes(definition.family)) return false;
     if (filter.maxComplexity !== undefined && definition.complexity > filter.maxComplexity) return false;
     if (filter.minComplexity !== undefined && definition.complexity < filter.minComplexity) return false;
     if (filter.id && definition.id !== filter.id) return false;
@@ -86,10 +88,23 @@ function validateDefinitions(errors) {
 }
 
 function validateDifficultyReferences(errors, difficulties) {
+  const knownFamilies = new Set(runtimeDefinitions.map((definition) => definition.family));
   difficulties.forEach((difficulty) => {
-    difficulty.types.forEach((id) => {
-      if (!registry.has(id)) errors.push(`difficulty ${difficulty.id} references unknown function id: ${id}`);
-    });
+    if (Array.isArray(difficulty.families)) {
+      difficulty.families.forEach((family) => {
+        if (!knownFamilies.has(family)) {
+          errors.push(`difficulty ${difficulty.id} references unknown function family: ${family}`);
+        }
+      });
+    } else {
+      errors.push(`difficulty ${difficulty.id} is missing families`);
+    }
+    // Keep this check for callers still using the pre-registry difficulty shape.
+    if (Array.isArray(difficulty.types)) {
+      difficulty.types.forEach((id) => {
+        if (!registry.has(id)) errors.push(`difficulty ${difficulty.id} references unknown function id: ${id}`);
+      });
+    }
   });
 }
 

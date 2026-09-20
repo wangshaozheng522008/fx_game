@@ -1,4 +1,4 @@
-import { equation, fmtN, generation, getEvaluationKey, quantize, smoothTransforms } from '../helpers.js';
+import { equation, fmtN, generation, getEvaluationKey, quantize, smoothTransforms, tierRange } from '../helpers.js';
 
 const common = {
   family: 'conic',
@@ -39,8 +39,11 @@ export const ellipse = {
   getLevel() {
     return 1;
   },
-  createParams() {
-    return { a: quantize(3.4 + Math.random() * 3.4), b: quantize(2.6 + Math.random() * 3.2) };
+  createParams(ctx) {
+    return {
+      a: quantize(tierRange(ctx, [[3.8, 4.8], [3.4, 6.8], [2.8, 7.2]])),
+      b: quantize(tierRange(ctx, [[3.0, 4.2], [2.6, 5.8], [2.2, 6.5]])),
+    };
   },
   format(params, level) {
     return `x²/${fmtN(params.a * params.a)} + y²/${fmtN(params.b * params.b)} = ${fmtN(level)}`;
@@ -60,8 +63,8 @@ export const circleFixed = {
   getLevel(params) {
     return params.r2;
   },
-  createParams() {
-    const r = quantize(3.6 + Math.random() * 2.8);
+  createParams(ctx) {
+    const r = quantize(tierRange(ctx, [[4.2, 5.0], [3.6, 6.4], [3.0, 6.8]]));
     return { r, r2: Math.round(r * r * 100) / 100 };
   },
   format(_params, level) {

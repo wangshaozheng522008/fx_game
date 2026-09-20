@@ -35,7 +35,7 @@ describe('unified function level evaluation', () => {
     expect(fn.level).toBe(1);
 
     // Display: equation must use level === 1
-    expect(fn.label).toBe(
+    expect(fn.label).toContain(
       `x²/${fmtN(fn.params.a * fn.params.a)} + y²/${fmtN(fn.params.b * fn.params.b)} = ${fmtN(1)}`,
     );
 
@@ -66,7 +66,7 @@ describe('unified function level evaluation', () => {
     expect(fn.level).toBe(1);
 
     // Display: equation reads "= 1"
-    expect(fn.label).toBe(
+    expect(fn.label).toContain(
       `x²/${fmtN(fn.params.a * fn.params.a)} + y²/${fmtN(fn.params.b * fn.params.b)} = ${fmtN(1)}`,
     );
 
@@ -74,7 +74,7 @@ describe('unified function level evaluation', () => {
     const beam = sampleIsoline(fn, player).primary;
     expect(beam.length).toBeGreaterThan(20);
     beam.forEach((p) => {
-      const v = p.x * p.x / (fn.params.a * fn.params.a) + p.y * p.y / (fn.params.b * fn.params.b);
+      const v = fn.evaluate(p.x, p.y);
       expect(v).toBeCloseTo(1, 1);
     });
 
@@ -93,14 +93,14 @@ describe('unified function level evaluation', () => {
     const { player, points } = round;
 
     expect(fn.level).toBe(fn.params.r2);
-    expect(fn.label).toBe(`x² + y² = ${fmtN(fn.params.r2)}`);
+    expect(fn.label).toContain(`x² + y² = ${fmtN(fn.params.r2)}`);
 
 
     expect(hitsAllTargets(fn, player, points)).toBe(true);
     const beam = sampleIsoline(fn, player).primary;
     expect(beam.length).toBeGreaterThan(20);
     beam.forEach((p) => {
-      expect(Math.hypot(p.x, p.y)).toBeCloseTo(fn.params.r, 1);
+      expect(Math.sqrt(fn.evaluate(p.x, p.y))).toBeCloseTo(fn.params.r, 1);
     });
   });
 
@@ -123,13 +123,13 @@ describe('unified function level evaluation', () => {
     // Level is the fixed circle, not the player's radius
     expect(resolveLevel(fn, player)).toBe(fn.params.r2);
     expect(fn.level).toBe(fn.params.r2);
-    expect(fn.label).toBe(`x² + y² = ${fmtN(fn.params.r2)}`);
+    expect(fn.label).toContain(`x² + y² = ${fmtN(fn.params.r2)}`);
 
 
     const beam = sampleIsoline(fn, player).primary;
     expect(beam.length).toBeGreaterThan(20);
     beam.forEach((p) => {
-      expect(Math.hypot(p.x, p.y)).toBeCloseTo(fn.params.r, 1);
+      expect(Math.sqrt(fn.evaluate(p.x, p.y))).toBeCloseTo(fn.params.r, 1);
     });
 
     // Player is off the circle, so the beam does not hit player/monsters
@@ -149,7 +149,7 @@ describe('unified function level evaluation', () => {
       const contour = sampleIsoline(fn, round.player);
       if (contour.primary && contour.primary.length) {
         const worst = Math.min(...contour.primary.map((p) => {
-          const v = fn.type.F(fn.params, p.x, p.y);
+          const v = fn.evaluate(p.x, p.y);
           return Math.abs(v - cached) - 0.02;
         }));
         expect(worst).toBeLessThanOrEqual(0);
@@ -167,10 +167,8 @@ describe('unified function level evaluation', () => {
     const contour = sampleIsoline(fn, round.player);
     expect(contour.polylines).toHaveLength(1);
     contour.primary.forEach((point) => {
-      const delta = Math.atan2(
-        Math.sin(Math.atan2(point.y, point.x) - fn.level),
-        Math.cos(Math.atan2(point.y, point.x) - fn.level),
-      );
+      const value = fn.evaluate(point.x, point.y);
+      const delta = Math.atan2(Math.sin(value - fn.level), Math.cos(value - fn.level));
       expect(Math.abs(delta)).toBeLessThan(0.2);
     });
   });

@@ -5,7 +5,8 @@ import { marchingSquares } from './contour/marchingSquares.js';
 import { stitchSegments } from './contour/stitchSegments.js';
 import { sampleActors } from './generator/actorSampler.js';
 import { getEvaluationKey } from './functions/helpers.js';
-import { getFunction } from './functions/registry.js';
+import { getFunction, getFunctions } from './functions/registry.js';
+import { getWaveProfile } from './generator/waveProfile.js';
 
 const MIN_R = 2.3;
 const MAX_R = WORLD_RANGE - 0.9;
@@ -89,7 +90,7 @@ function makePoint(x, y) {
 
 export function resolveLevel(fn, player) {
   if (fn.type.getLevel) return fn.type.getLevel(fn.params, player);
-  return fn.type[evaluationKey](fn.params, player.x, player.y);
+  return evaluateFunction(fn, player.x, player.y);
 }
 
 function levelOf(fn, player) {
@@ -98,12 +99,44 @@ function levelOf(fn, player) {
 }
 
 function equationFor(fn, player) {
-  return fn.type.format(fn.params, levelOf(fn, player));
+  const equation = fn.type.format(fn.params, levelOf(fn, player));
+  if (!fn.transform) return equation;
+  const { translate, rotate, scale } = fn.transform;
+  const parts = [];
+  if (translate.x || translate.y) {
+    parts.push(`T(${translate.x >= 0 ? '+' : ''}${translate.x.toFixed(2)},${translate.y >= 0 ? '+' : ''}${translate.y.toFixed(2)})`);
+  }
+  if (rotate) parts.push(`R(${rotate >= 0 ? '+' : ''}${rotate.toFixed(2)})`);
+  if (scale !== 1) parts.push(`S(${scale.toFixed(2)})`);
+  return parts.length ? `${equation} · ${parts.join(' ')}` : equation;
 }
 
 function fieldAt(fn, x, y) {
-  if (!fn.type.domain(x, y)) return NaN;
-  return fn.type[evaluationKey](fn.params, x, y);
+  if (!isInDomain(fn, x, y)) return NaN;
+  return evaluateFunction(fn, x, y);
+}
+
+function localPoint(fn, x, y) {
+  const transform = fn.transform;
+  if (!transform) return { x, y };
+  const dx = x - transform.translate.x;
+  const dy = y - transform.translate.y;
+  const cos = Math.cos(transform.rotate);
+  const sin = Math.sin(transform.rotate);
+  return {
+    x: (cos * dx + sin * dy) / transform.scale,
+    y: (-sin * dx + cos * dy) / transform.scale,
+  };
+}
+
+function evaluateFunction(fn, x, y) {
+  const point = localPoint(fn, x, y);
+  return fn.type[evaluationKey](fn.params, point.x, point.y);
+}
+
+function isInDomain(fn, x, y) {
+  const point = localPoint(fn, x, y);
+  return fn.type.domain(point.x, point.y);
 }
 
 function levelTolerance(level) {
@@ -130,16 +163,35 @@ function randomBoardPoint() {
   return makePoint(3.2, 2.4);
 }
 
-function makeFn(id, params, correct) {
+function makeFn(id, params, correct, transform = null) {
   const type = getFunction(id);
   if (!type) throw new Error(`Unknown function id: ${id}`);
-  return {
+  const fn = {
     id,
     type,
     params,
     label: type.format(params, undefined),
     correct: Boolean(correct),
+    transform,
   };
+  fn.evaluate = (x, y) => evaluateFunction(fn, x, y);
+  fn.isInDomain = (x, y) => isInDomain(fn, x, y);
+  return fn;
+}
+
+function createTransform(type, profile) {
+  if (Math.random() >= profile.transformChance) return null;
+  const transform = {
+    translate: { x: 0, y: 0 },
+    rotate: 0,
+    scale: 1,
+  };
+  if (type.transforms.translate) {
+    transform.translate = { x: round2(rand(-0.55, 0.55)), y: round2(rand(-0.55, 0.55)) };
+  }
+  if (type.transforms.rotate) transform.rotate = rand(-Math.PI / 6, Math.PI / 6);
+  if (type.transforms.scale) transform.scale = rand(0.88, 1.14);
+  return transform;
 }
 
 function fallbackRound(actorCount) {
@@ -168,16 +220,27 @@ export function createRound(wave, difficultyInput) {
   const difficulty = typeof difficultyInput === 'string'
     ? getDifficulty(difficultyInput)
     : difficultyInput || getDifficulty();
+  const profile = getWaveProfile(difficulty, wave);
+  const candidates = getFunctions({
+    families: difficulty.families,
+    maxComplexity: profile.maxComplexity,
+  });
   const actorCount = 1 + difficulty.monsterCount;
 
   for (let attempt = 0; attempt < 70; attempt += 1) {
-    const typeId = pick(difficulty.types);
-    const type = getFunction(typeId);
+    const type = pick(candidates);
+    const typeId = type?.id;
     generationStats.attempts += 1;
+    if (!typeId) continue;
     typeGenerationStats(typeId).attempts += 1;
-    if (!type) continue;
 
-    const correct = makeFn(typeId, type.createParams({}), true);
+    const context = { parameterTier: profile.parameterTier, wave, difficulty, profile };
+    const correct = makeFn(
+      typeId,
+      type.createParams(context),
+      true,
+      createTransform(type, profile),
+    );
     const seedPlayer = randomBoardPoint();
     const seedLevel = resolveLevel(correct, seedPlayer);
     if (!Number.isFinite(seedLevel)) continue;
@@ -202,13 +265,23 @@ export function createRound(wave, difficultyInput) {
     const used = new Set([correct.id]);
     const options = [correct];
     for (let optionAttempt = 0; optionAttempt < 40 && options.length < 3; optionAttempt += 1) {
-      const remaining = difficulty.types.filter((id) => !used.has(id));
-      const otherId = pick(remaining);
-      if (!otherId) break;
-      const otherType = getFunction(otherId);
-      const wrong = makeFn(otherId, otherType.createParams({}), false);
+      const sameFamily = candidates.filter((candidate) => (
+        candidate.family === type.family && !used.has(candidate.id)
+      ));
+      const available = candidates.filter((candidate) => !used.has(candidate.id));
+      const pool = sameFamily.length && Math.random() < profile.hardDistractorChance
+        ? sameFamily
+        : available;
+      const otherType = pick(pool);
+      if (!otherType) break;
+      const wrong = makeFn(
+        otherType.id,
+        otherType.createParams(context),
+        false,
+        createTransform(otherType, profile),
+      );
       if (hitsAllTargets(wrong, player, points)) continue;
-      used.add(otherId);
+      used.add(otherType.id);
       options.push(wrong);
     }
     if (options.length < 3) continue;
@@ -233,7 +306,7 @@ export function createRound(wave, difficultyInput) {
 }
 
 function fieldDelta(fn, x, y, level) {
-  if (!fn.type.domain(x, y)) return NaN;
+  if (!isInDomain(fn, x, y)) return NaN;
   const value = fieldAt(fn, x, y);
   if (!Number.isFinite(value)) return NaN;
   if (fn.id === 'atan2') {
@@ -264,7 +337,7 @@ export function sampleIsoline(fn, player) {
     segments = segments.filter((segment) => {
       const x = (segment.a.x + segment.b.x) / 2;
       const y = (segment.a.y + segment.b.y) / 2;
-      return angularDifference(Math.atan2(y, x), level) < Math.PI / 2;
+      return Math.abs(fieldDelta(fn, x, y, level)) < Math.PI / 2;
     });
   }
   const polylines = stitchSegments(segments);

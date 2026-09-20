@@ -6,6 +6,7 @@ import {
   quantize,
   rand,
   smoothTransforms,
+  tierRange,
   term,
 } from '../helpers.js';
 
@@ -26,10 +27,10 @@ export const affine = {
   [getEvaluationKey()](params, x, y) {
     return params.a * x + params.b * y;
   },
-  createParams() {
+  createParams(ctx) {
     return {
-      a: quantize(rand(0.4, 1.8) * (Math.random() < 0.5 ? -1 : 1)),
-      b: quantize(rand(0.4, 1.8) * (Math.random() < 0.5 ? -1 : 1)),
+      a: quantize(tierRange(ctx, [[0.7, 1.1], [0.4, 1.8], [0.3, 2.4]]) * (Math.random() < 0.5 ? -1 : 1)),
+      b: quantize(tierRange(ctx, [[0.7, 1.1], [0.4, 1.8], [0.3, 2.4]]) * (Math.random() < 0.5 ? -1 : 1)),
     };
   },
   format(params, level) {
