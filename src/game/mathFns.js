@@ -1,5 +1,8 @@
 import { HIT_TOLERANCE, WORLD_RANGE } from './constants.js';
 import { getDifficulty } from './difficulties.js';
+import { distanceToPolyline, polylineLength } from './contour/geometry.js';
+import { marchingSquares } from './contour/marchingSquares.js';
+import { stitchSegments } from './contour/stitchSegments.js';
 
 const MIN_R = 2.3;
 const MAX_R = WORLD_RANGE - 0.9;
@@ -692,50 +695,59 @@ function fieldDelta(fn, x, y, c) {
   return v - c;
 }
 
-function lerpZero(x0, y0, d0, x1, y1, d1) {
-  const t = d0 / (d0 - d1);
-  return {
-    x: x0 + (x1 - x0) * t,
-    y: y0 + (y1 - y0) * t,
-  };
+function angularDelta(a, b) {
+  let d = a - b;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return d;
 }
 
 export function sampleIsoline(fn, player) {
   const c = levelOf(fn, player);
-  if (!Number.isFinite(c)) return [];
-  const n = 72;
-  const delta = (2 * WORLD_RANGE) / n;
-  const grid = [];
-  for (let j = 0; j <= n; j += 1) {
-    const row = [];
-    const y = WORLD_RANGE - j * delta;
-    for (let i = 0; i <= n; i += 1) {
-      const x = -WORLD_RANGE + i * delta;
-      row.push(fieldDelta(fn, x, y, c));
-    }
-    grid.push(row);
-  }
-  const pts = [];
-  function addEdge(i0, j0, i1, j1) {
-    const d0 = grid[j0][i0];
-    const d1 = grid[j1][i1];
-    if (!Number.isFinite(d0) || !Number.isFinite(d1) || d0 * d1 > 0) return;
-    if (d0 === 0 && d1 === 0) return;
-    const x0 = -WORLD_RANGE + i0 * delta;
-    const y0 = WORLD_RANGE - j0 * delta;
-    const x1 = -WORLD_RANGE + i1 * delta;
-    const y1 = WORLD_RANGE - j1 * delta;
-    pts.push(d0 === 0 ? { x: x0, y: y0 } : lerpZero(x0, y0, d0, x1, y1, d1));
-  }
-  for (let j = 0; j < n; j += 1) {
-    for (let i = 0; i < n; i += 1) {
-      addEdge(i, j, i + 1, j);
-      addEdge(i, j, i, j + 1);
-    }
-  }
-  pts.forEach((p) => {
-    p.d = hypot(p.x - player.x, p.y - player.y);
+  if (!Number.isFinite(c)) return { polylines: [], primary: null };
+
+  let segments = marchingSquares({
+    evaluate: (x, y) => fieldDelta(fn, x, y, c),
+    level: 0,
+    bounds: {
+      minX: -WORLD_RANGE,
+      maxX: WORLD_RANGE,
+      minY: -WORLD_RANGE,
+      maxY: WORLD_RANGE,
+    },
+    resolution: 72,
   });
-  pts.sort((a, b) => a.d - b.d);
-  return pts;
+  if (fn.id === 'atan2') {
+    // The wrapped angular delta also changes sign on the antipodal branch cut.
+    // Those crossings are discontinuities, not points on atan2(y, x) = level.
+    segments = segments.filter((segment) => {
+      const x = (segment.a.x + segment.b.x) / 2;
+      const y = (segment.a.y + segment.b.y) / 2;
+      return Math.abs(angularDelta(Math.atan2(y, x), c)) < Math.PI / 2;
+    });
+  }
+  const polylines = stitchSegments(segments);
+  if (!polylines.length) return { polylines, primary: null };
+
+  let primary = polylines[0];
+  if (fn.type.getLevel) {
+    if (hitsTarget(fn, player, player)) {
+      primary = polylines.reduce((closest, polyline) => (
+        distanceToPolyline(player, polyline) < distanceToPolyline(player, closest)
+          ? polyline
+          : closest
+      ), polylines[0]);
+    } else {
+      primary = polylines.reduce((longest, polyline) => (
+        polylineLength(polyline) > polylineLength(longest) ? polyline : longest
+      ), polylines[0]);
+    }
+  } else {
+    primary = polylines.reduce((closest, polyline) => (
+      distanceToPolyline(player, polyline) < distanceToPolyline(player, closest)
+        ? polyline
+        : closest
+    ), polylines[0]);
+  }
+  return { polylines, primary };
 }

@@ -73,12 +73,12 @@ export function createRenderer(canvas) {
     );
   }
 
-  function drawBeam(samples, t, hit) {
-    if (!samples.length) return;
-    const count = Math.max(1, Math.floor(samples.length * t));
+  function drawBeam(polyline, t, hit) {
+    if (!polyline || !polyline.length) return;
+    const count = Math.floor(polyline.length * t);
     ctx.fillStyle = hit === false ? '#ff8fa0' : '#ffe566';
     for (let i = 0; i < count; i += 1) {
-      const p = worldToPix(samples[i].x, samples[i].y);
+      const p = worldToPix(polyline[i].x, polyline[i].y);
       ctx.fillRect(pix(p.px) - 1, pix(p.py) - 1, 2, 2);
     }
   }
@@ -124,7 +124,7 @@ export function createRenderer(canvas) {
     clear();
     drawGrid();
     if (state.beamSamples) {
-      drawBeam(state.beamSamples, state.beamT, state.hit);
+      drawBeam(state.beamSamples.primary, state.beamT, state.hit);
     }
     drawActor(PLAYER, player.x, player.y, 0);
     const bob = Math.round(Math.sin((state.now || 0) / 180));

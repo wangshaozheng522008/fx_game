@@ -204,7 +204,7 @@ function resolvePick(index, timedOut) {
   paintChoices(game.round, { picked: game.picked });
   if (timedOut) {
     game.banner = { text: 'TIME UP', color: '#ff8fa0' };
-    game.beamSamples = [];
+    game.beamSamples = { polylines: [], primary: null };
     game.beamT = 1;
     finishBeam();
     return;

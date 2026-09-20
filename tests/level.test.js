@@ -41,7 +41,7 @@ describe('unified function level evaluation', () => {
 
     // Hit test: beam samples must cover player and all monsters
     expect(hitsAllTargets(fn, player, points)).toBe(true);
-    const beam = sampleIsoline(fn, player);
+    const beam = sampleIsoline(fn, player).primary;
     expect(beam.length).toBeGreaterThan(20);
     const near = (pt, dist) => beam.some((p) => Math.hypot(p.x - pt.x, p.y - pt.y) <= dist);
     expect(near(player, 0.3)).toBe(true);
@@ -71,7 +71,7 @@ describe('unified function level evaluation', () => {
     );
 
     // Beam: every sample lies on this option's own level-1 ellipse
-    const beam = sampleIsoline(fn, player);
+    const beam = sampleIsoline(fn, player).primary;
     expect(beam.length).toBeGreaterThan(20);
     beam.forEach((p) => {
       const v = p.x * p.x / (fn.params.a * fn.params.a) + p.y * p.y / (fn.params.b * fn.params.b);
@@ -97,7 +97,7 @@ describe('unified function level evaluation', () => {
 
 
     expect(hitsAllTargets(fn, player, points)).toBe(true);
-    const beam = sampleIsoline(fn, player);
+    const beam = sampleIsoline(fn, player).primary;
     expect(beam.length).toBeGreaterThan(20);
     beam.forEach((p) => {
       expect(Math.hypot(p.x, p.y)).toBeCloseTo(fn.params.r, 1);
@@ -126,7 +126,7 @@ describe('unified function level evaluation', () => {
     expect(fn.label).toBe(`x² + y² = ${fmtN(fn.params.r2)}`);
 
 
-    const beam = sampleIsoline(fn, player);
+    const beam = sampleIsoline(fn, player).primary;
     expect(beam.length).toBeGreaterThan(20);
     beam.forEach((p) => {
       expect(Math.hypot(p.x, p.y)).toBeCloseTo(fn.params.r, 1);
@@ -146,14 +146,32 @@ describe('unified function level evaluation', () => {
       // resolveLevel, hitsTarget and sampleIsoline all agree with the cached level
       expect(resolveLevel(fn, round.player)).toBe(cached);
       if (fn.correct) expect(hitsTarget(fn, round.player, round.player)).toBe(true);
-      const beam = sampleIsoline(fn, round.player);
-      if (beam.length) {
-        const worst = Math.min(...beam.map((p) => {
+      const contour = sampleIsoline(fn, round.player);
+      if (contour.primary && contour.primary.length) {
+        const worst = Math.min(...contour.primary.map((p) => {
           const v = fn.type.F(fn.params, p.x, p.y);
           return Math.abs(v - cached) - 0.02;
         }));
         expect(worst).toBeLessThanOrEqual(0);
       }
+    });
+  });
+
+  it('atan2 keeps the selected ray and drops the antipodal branch cut', () => {
+    let round = null;
+    for (let i = 0; i < 200 && !round; i += 1) {
+      const candidate = createRound(i + 500, gauss);
+      if (candidate.options.some((fn) => fn.id === 'atan2')) round = candidate;
+    }
+    const fn = round.options.find((item) => item.id === 'atan2');
+    const contour = sampleIsoline(fn, round.player);
+    expect(contour.polylines).toHaveLength(1);
+    contour.primary.forEach((point) => {
+      const delta = Math.atan2(
+        Math.sin(Math.atan2(point.y, point.x) - fn.level),
+        Math.cos(Math.atan2(point.y, point.x) - fn.level),
+      );
+      expect(Math.abs(delta)).toBeLessThan(0.2);
     });
   });
 });
