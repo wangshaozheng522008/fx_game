@@ -38,6 +38,7 @@ if (import.meta.env.DEV) validateRegistry();
 let raf = 0;
 let game = null;
 let selectedDifficulty = getDifficulty(DEFAULT_DIFFICULTY_ID);
+let inputLockedUntil = 0;
 
 function canShare() {
   try {
@@ -50,20 +51,13 @@ function canShare() {
 function onTap(el, handler) {
   if (!el) return;
   let last = 0;
-  const run = () => {
+  el.addEventListener('click', (ev) => {
+    ev.preventDefault();
     if (el.disabled) return;
     const now = Date.now();
     if (now - last < 350) return;
     last = now;
     handler();
-  };
-  el.addEventListener('click', (ev) => {
-    ev.preventDefault();
-    run();
-  });
-  el.addEventListener('pointerup', (ev) => {
-    if (ev.button) return;
-    run();
   });
 }
 
@@ -181,6 +175,7 @@ function beginRound() {
   try {
     game.round = createRound(game.wave, game.difficulty);
     game.phase = 'choice';
+    inputLockedUntil = performance.now() + 250;
     game.deadline = performance.now() + game.difficulty.seconds * 1000;
     game.picked = -1;
     game.hit = null;
@@ -233,6 +228,7 @@ function startGame() {
 
 function resolvePick(index, timedOut) {
   if (!game || game.phase !== 'choice') return;
+  if (!timedOut && performance.now() < inputLockedUntil) return;
   game.answerRemain = Math.max(
     0,
     (game.deadline - performance.now()) / 1000,
