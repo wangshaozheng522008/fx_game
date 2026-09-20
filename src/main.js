@@ -3,6 +3,7 @@ import { showToast } from './lib/toast.js';
 import { BEAM_MS, MAX_LIVES, SETTLE_MS } from './game/constants.js';
 import { DEFAULT_DIFFICULTY_ID, getDifficulty } from './game/difficulties.js';
 import { createRound, hitsAllTargets, sampleIsoline } from './game/mathFns.js';
+import { validateRegistry } from './game/functions/registry.js';
 import { createRenderer } from './game/render.js';
 import { readBest, writeBest } from './game/storage.js';
 import { sfxHit, sfxMiss, sfxSelect, sfxTick, unlockAudio } from './game/audio.js';
@@ -31,6 +32,8 @@ const shareBtn = document.querySelector('#btn-share');
 const canvas = document.querySelector('#game');
 const renderer = createRenderer(canvas);
 const diffCards = Array.from(document.querySelectorAll('.diff-card'));
+
+if (import.meta.env.DEV) validateRegistry();
 
 let raf = 0;
 let game = null;

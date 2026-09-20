@@ -116,8 +116,8 @@ function canAdd(candidate, candidateDistance, selected, selectedDistances, table
   ));
 }
 
-function tryComponent(fn, level, table, actorCount) {
-  if (table.length < MIN_COMPONENT_LENGTH) return null;
+function tryComponent(fn, level, table, actorCount, minComponentLength) {
+  if (table.length < minComponentLength) return null;
   if (!table.closed && table.length < (actorCount - 1) * MIN_ARC_DISTANCE) return null;
   if (table.closed && table.length < actorCount * MIN_ARC_DISTANCE) return null;
 
@@ -155,12 +155,15 @@ function tryComponent(fn, level, table, actorCount) {
 
 export function sampleActors({ fn, level, polylines, actorCount }) {
   if (!Number.isInteger(actorCount) || actorCount < 1 || !Array.isArray(polylines)) return null;
+  const minComponentLength = Number.isFinite(fn?.type?.generation?.minContourLength)
+    ? fn.type.generation.minContourLength
+    : MIN_COMPONENT_LENGTH;
   const tables = polylines
     .map((polyline) => makeArcTable(polyline))
-    .filter((table) => table.polyline.length >= 2 && table.length >= MIN_COMPONENT_LENGTH);
+    .filter((table) => table.polyline.length >= 2 && table.length >= minComponentLength);
 
   for (const table of shuffle(tables)) {
-    const actors = tryComponent(fn, level, table, actorCount);
+    const actors = tryComponent(fn, level, table, actorCount, minComponentLength);
     if (actors) return actors;
   }
   return null;
