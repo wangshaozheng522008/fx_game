@@ -4,7 +4,7 @@ import { getFunction, getFunctions, validateRegistry } from '../src/game/functio
 describe('function registry', () => {
   it('validates all definitions and difficulty references', () => {
     expect(validateRegistry()).toBe(true);
-    expect(getFunctions()).toHaveLength(18);
+    expect(getFunctions()).toHaveLength(28);
   });
 
   it('filters by metadata', () => {

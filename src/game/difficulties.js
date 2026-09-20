@@ -54,7 +54,7 @@ export const DIFFICULTIES = [
     maxComplexity: 5,
     seconds: 30,
     monsterCount: 3,
-    families: ['exponential', 'polar', 'exotic'],
+    families: ['conic', 'exponential', 'polar', 'exotic'],
     scoreMul: 2,
     color: '#ff4d4d',
     colorHi: '#ffe566',

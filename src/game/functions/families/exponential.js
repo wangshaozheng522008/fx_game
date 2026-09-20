@@ -60,3 +60,23 @@ export const gaussian = {
     return equation('e^{-(x²+y²)}', level);
   },
 };
+
+export const logSumExp = {
+  ...common,
+  id: 'logSumExp',
+  complexity: 4,
+  tags: ['open', 'smooth', 'single-component'],
+  domain() {
+    return true;
+  },
+  [getEvaluationKey()](_params, x, y) {
+    const max = Math.max(x, y);
+    return max + Math.log(Math.exp(x - max) + Math.exp(y - max));
+  },
+  createParams() {
+    return {};
+  },
+  format(_params, level) {
+    return equation('log(eˣ + eʸ)', level);
+  },
+};

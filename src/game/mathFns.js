@@ -181,6 +181,7 @@ function makeFn(id, params, correct, transform = null) {
 
 function createTransform(type, profile) {
   if (Math.random() >= profile.transformChance) return null;
+  if (!type.transforms.translate && !type.transforms.rotate && !type.transforms.scale) return null;
   const transform = {
     translate: { x: 0, y: 0 },
     rotate: 0,

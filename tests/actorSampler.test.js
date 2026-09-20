@@ -16,6 +16,15 @@ function circlePolyline(radius, count = 160) {
   return points;
 }
 
+function circleArc(radius, start, end, count = 80) {
+  const points = [];
+  for (let i = 0; i <= count; i += 1) {
+    const angle = start + ((end - start) * i) / count;
+    points.push({ x: radius * Math.cos(angle), y: radius * Math.sin(angle) });
+  }
+  return points;
+}
+
 const circleFn = {
   id: 'circle',
   params: {},
@@ -64,5 +73,19 @@ describe('generic contour actor sampler', () => {
       polylines: [short],
       actorCount: 2,
     })).toBeNull();
+  });
+
+  it('can distribute actors across separate valid components', () => {
+    const actors = sampleActors({
+      fn: circleFn,
+      level: 25,
+      polylines: [
+        circleArc(5, 0, Math.PI / 2),
+        circleArc(5, Math.PI, Math.PI * 1.5),
+      ],
+      actorCount: 4,
+    });
+    expect(actors).toHaveLength(4);
+    actors.forEach((point) => expect(point.x ** 2 + point.y ** 2).toBeCloseTo(25, 1));
   });
 });

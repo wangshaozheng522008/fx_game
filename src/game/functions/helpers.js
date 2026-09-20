@@ -57,6 +57,10 @@ export function tierRange(ctx, ranges) {
   return rand(range[0], range[1]);
 }
 
+export function pick(items) {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
 export function getEvaluationKey() {
   return String.fromCharCode(101, 118, 97, 108);
 }

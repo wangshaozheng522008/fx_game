@@ -1,4 +1,4 @@
-import { equation, fmtN, generation, getEvaluationKey, quantize, smoothTransforms, tierRange } from '../helpers.js';
+import { equation, fmtN, generation, getEvaluationKey, parameterTier, pick, quantize, smoothTransforms, tierRange } from '../helpers.js';
 
 const common = {
   family: 'conic',
@@ -105,5 +105,57 @@ export const stretchRad = {
   },
   format(_params, level) {
     return equation('√(x² + 4y²)', level);
+  },
+};
+
+export const superellipse = {
+  ...common,
+  id: 'superellipse',
+  complexity: 3,
+  tags: ['closed', 'smooth', 'single-component'],
+  domain() {
+    return true;
+  },
+  [getEvaluationKey()](params, x, y) {
+    return (Math.abs(x) / params.a) ** params.p + (Math.abs(y) / params.b) ** params.p;
+  },
+  createParams(ctx) {
+    const tier = parameterTier(ctx);
+    const powers = tier <= 2 ? [2] : tier === 3 ? [1.5, 2, 3] : [1.5, 2, 3, 4];
+    return {
+      a: quantize(tierRange(ctx, [[4, 4.8], [3.4, 5.8], [3, 6]])),
+      b: quantize(tierRange(ctx, [[3, 3.8], [2.6, 4.8], [2, 5]])),
+      p: pick(powers),
+    };
+  },
+  format(params, level) {
+    return `|x/${fmtN(params.a)}|^${params.p} + |y/${fmtN(params.b)}|^${params.p} = ${fmtN(level)}`;
+  },
+};
+
+export const lemniscate = {
+  ...common,
+  id: 'lemniscate',
+  complexity: 5,
+  tags: ['closed', 'self-intersecting', 'single-component'],
+  generation: generation(4.5, 2),
+  // Keep the singular crossing canonical; transforming it can clip both lobes
+  // before the four-actor sampler finds a valid separation.
+  transforms: { translate: false, rotate: false, scale: false },
+  domain() {
+    return true;
+  },
+  [getEvaluationKey()](params, x, y) {
+    const radiusSquared = x * x + y * y;
+    return radiusSquared * radiusSquared - params.a * params.a * (x * x - y * y);
+  },
+  getLevel() {
+    return 0;
+  },
+  createParams(ctx) {
+    return { a: tierRange(ctx, [[8, 8.2], [8, 8.4], [8, 8.6]]) };
+  },
+  format(params) {
+    return `(x² + y²)² − ${fmtN(params.a * params.a)}(x² − y²) = 0`;
   },
 };
