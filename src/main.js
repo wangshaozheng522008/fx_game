@@ -39,7 +39,12 @@ if (import.meta.env.DEV) validateRegistry();
 let raf = 0;
 let game = null;
 let selectedDifficulty = getDifficulty(DEFAULT_DIFFICULTY_ID);
-let inputLockedUntil = 0;
+let roundSerial = 0;
+let pressRound = 0;
+
+// A delayed click from the previous screen or round must not answer a new one.
+document.addEventListener('pointerdown', () => { pressRound = roundSerial; }, true);
+document.addEventListener('touchstart', () => { pressRound = roundSerial; }, true);
 
 function canShare() {
   try {
@@ -57,8 +62,7 @@ function onTap(el, handler) {
     if (el.disabled) return;
     const now = Date.now();
     if (now - last < 350) return;
-    last = now;
-    handler();
+    if (handler(ev) !== false) last = now;
   });
 }
 
@@ -176,7 +180,7 @@ function beginRound() {
   try {
     game.round = createRound(game.wave, game.difficulty);
     game.phase = 'choice';
-    inputLockedUntil = performance.now() + 250;
+    roundSerial += 1;
     game.deadline = performance.now() + game.difficulty.seconds * 1000;
     game.picked = -1;
     game.hit = null;
@@ -230,8 +234,7 @@ function startGame() {
 }
 
 function resolvePick(index, timedOut) {
-  if (!game || game.phase !== 'choice') return;
-  if (!timedOut && performance.now() < inputLockedUntil) return;
+  if (!game || game.phase !== 'choice') return false;
   game.answerRemain = Math.max(
     0,
     (game.deadline - performance.now()) / 1000,
@@ -249,7 +252,7 @@ function resolvePick(index, timedOut) {
     game.beamPaths = [];
     game.beamT = 1;
     finishBeam();
-    return;
+    return true;
   }
   sfxSelect();
   game.phase = 'beam';
@@ -262,6 +265,7 @@ function resolvePick(index, timedOut) {
     game.round.player,
     points,
   );
+  return true;
 }
 
 function finishBeam() {
@@ -361,9 +365,10 @@ onTap(document.querySelector('#btn-home'), () => {
 onTap(shareBtn, shareScore);
 
 choiceBtns.forEach((btn) => {
-  onTap(btn, () => {
+  onTap(btn, (ev) => {
+    if (ev.detail > 0 && pressRound !== roundSerial) return false;
     const index = Number(btn.getAttribute('data-index'));
-    resolvePick(index, false);
+    return resolvePick(index, false);
   });
 });
 
