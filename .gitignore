@@ -6,3 +6,4 @@ xhs-tool/
 *.log
 .vscode/
 .idea/
+__pycache__/
